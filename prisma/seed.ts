@@ -1,4 +1,11 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import {
+  CaseStatus,
+  CaseType,
+  PartyType,
+  PrismaClient,
+  Priority,
+  UserRole,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -33,11 +40,91 @@ const seedUsers = [
   },
 ];
 
-async function main(): Promise<void> {
-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+interface SeedCaseInput {
+  referenceCode: string;
+  title: string;
+  type: CaseType;
+  status: CaseStatus;
+  priority: Priority;
+  ownerEmail: string;
+  description?: string;
+  openedDate?: Date;
+  closedDate?: Date;
+  parties: Array<{
+    name: string;
+    partyType: PartyType;
+    contactInfo?: string;
+    notes?: string;
+  }>;
+}
+
+const seedCases: SeedCaseInput[] = [
+  {
+    referenceCode: 'CASE-2026-00001',
+    title: 'Dispute with Vendor X',
+    type: CaseType.LITIGATION,
+    status: CaseStatus.OPEN,
+    priority: Priority.HIGH,
+    ownerEmail: 'counsel@legal.local',
+    description:
+      'Commercial dispute regarding delivery terms and service-level breaches.',
+    openedDate: new Date('2026-01-10'),
+    parties: [
+      {
+        name: 'Our Company',
+        partyType: PartyType.PLAINTIFF,
+        contactInfo: 'legal@company.com',
+      },
+      {
+        name: 'Vendor X',
+        partyType: PartyType.DEFENDANT,
+        contactInfo: 'disputes@vendorx.com',
+        notes: 'Primary counterparty in delivery dispute',
+      },
+    ],
+  },
+  {
+    referenceCode: 'CASE-2026-00002',
+    title: 'Data Protection Inquiry',
+    type: CaseType.REGULATORY,
+    status: CaseStatus.IN_PROGRESS,
+    priority: Priority.CRITICAL,
+    ownerEmail: 'counsel@legal.local',
+    description: 'Regulatory inquiry into data handling and retention practices.',
+    openedDate: new Date('2026-02-01'),
+    parties: [
+      {
+        name: 'Data Protection Authority',
+        partyType: PartyType.THIRD_PARTY,
+        contactInfo: 'inquiries@dpa.gov',
+      },
+    ],
+  },
+  {
+    referenceCode: 'CASE-2026-00003',
+    title: 'Internal Policy Review',
+    type: CaseType.INTERNAL,
+    status: CaseStatus.CLOSED,
+    priority: Priority.LOW,
+    ownerEmail: 'counsel2@legal.local',
+    description: 'Closed internal review of whistleblower policy updates.',
+    openedDate: new Date('2025-11-01'),
+    closedDate: new Date('2026-01-31'),
+    parties: [
+      {
+        name: 'HR Department',
+        partyType: PartyType.INTERNAL,
+        contactInfo: 'hr@company.com',
+      },
+    ],
+  },
+];
+
+async function seedUsersData(passwordHash: string): Promise<Map<string, string>> {
+  const userIds = new Map<string, string>();
 
   for (const user of seedUsers) {
-    await prisma.user.upsert({
+    const record = await prisma.user.upsert({
       where: { email: user.email },
       update: {
         fullName: user.fullName,
@@ -53,9 +140,81 @@ async function main(): Promise<void> {
         isActive: true,
       },
     });
+
+    userIds.set(user.email, record.id);
   }
 
+  return userIds;
+}
+
+async function upsertCaseWithParties(
+  seedCase: SeedCaseInput,
+  ownerId: string,
+): Promise<void> {
+  const legalCase = await prisma.legalCase.upsert({
+    where: { referenceCode: seedCase.referenceCode },
+    update: {
+      title: seedCase.title,
+      type: seedCase.type,
+      status: seedCase.status,
+      priority: seedCase.priority,
+      ownerId,
+      description: seedCase.description ?? null,
+      openedDate: seedCase.openedDate ?? null,
+      closedDate: seedCase.closedDate ?? null,
+      deletedAt: null,
+    },
+    create: {
+      referenceCode: seedCase.referenceCode,
+      title: seedCase.title,
+      type: seedCase.type,
+      status: seedCase.status,
+      priority: seedCase.priority,
+      ownerId,
+      description: seedCase.description ?? null,
+      openedDate: seedCase.openedDate ?? null,
+      closedDate: seedCase.closedDate ?? null,
+    },
+  });
+
+  await prisma.caseParty.deleteMany({ where: { caseId: legalCase.id } });
+
+  if (seedCase.parties.length > 0) {
+    await prisma.caseParty.createMany({
+      data: seedCase.parties.map((party) => ({
+        caseId: legalCase.id,
+        name: party.name,
+        partyType: party.partyType,
+        contactInfo: party.contactInfo ?? null,
+        notes: party.notes ?? null,
+      })),
+    });
+  }
+}
+
+async function main(): Promise<void> {
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const userIds = await seedUsersData(passwordHash);
+
+  for (const seedCase of seedCases) {
+    const ownerId = userIds.get(seedCase.ownerEmail);
+
+    if (!ownerId) {
+      throw new Error(`Owner not found for case ${seedCase.referenceCode}`);
+    }
+
+    await upsertCaseWithParties(seedCase, ownerId);
+  }
+
+  const partyCount = seedCases.reduce(
+    (total, seedCase) => total + seedCase.parties.length,
+    0,
+  );
+
   console.log(`Seeded ${seedUsers.length} users (password: ${DEFAULT_PASSWORD})`);
+  console.log(
+    `Seeded ${seedCases.length} cases with ${partyCount} parties`,
+  );
 }
 
 main()

@@ -100,3 +100,22 @@ export async function deleteUserByEmail(email: string): Promise<void> {
   const client = getTestPrisma();
   await client.user.deleteMany({ where: { email } });
 }
+
+export async function getUserIdByEmail(email: string): Promise<string> {
+  const client = getTestPrisma();
+  const user = await client.user.findUniqueOrThrow({
+    where: { email },
+    select: { id: true },
+  });
+
+  return user.id;
+}
+
+export async function cleanupTestCases(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'CASE' },
+  });
+  await client.caseParty.deleteMany();
+  await client.legalCase.deleteMany();
+}

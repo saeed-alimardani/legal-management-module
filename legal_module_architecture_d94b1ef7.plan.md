@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: phase-3-cases-template
     content: "Phase 3: Cases module (full hexagonal template) — CRUD, parties, reassign, activity logging"
-    status: pending
+    status: completed
   - id: phase-4-deadlines
     content: "Phase 4: Deadlines module — CRUD + upcoming/overdue/today/assigned-to-me views"
     status: pending
