@@ -1,0 +1,15 @@
+export const APP_CONSTANTS = {
+  API_PREFIX: 'api/v1',
+  SWAGGER_PATH: 'api/docs',
+  MAX_UPLOAD_SIZE_BYTES: 20 * 1024 * 1024,
+} as const;
+
+export const CONFIG_KEYS = {
+  PORT: 'PORT',
+  NODE_ENV: 'NODE_ENV',
+  APP_TIMEZONE: 'APP_TIMEZONE',
+  DATABASE_URL: 'DATABASE_URL',
+  JWT_SECRET: 'JWT_SECRET',
+  JWT_EXPIRES_IN: 'JWT_EXPIRES_IN',
+  UPLOAD_DIR: 'UPLOAD_DIR',
+} as const;

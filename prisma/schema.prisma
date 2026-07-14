@@ -1,0 +1,333 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  LEGAL_ADMIN
+  LEGAL_MANAGER
+  LEGAL_COUNSEL
+  VIEWER
+}
+
+enum CaseType {
+  LITIGATION
+  ARBITRATION
+  REGULATORY
+  INTERNAL
+  OTHER
+}
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  ON_HOLD
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PartyType {
+  PLAINTIFF
+  DEFENDANT
+  THIRD_PARTY
+  INTERNAL
+}
+
+enum ContractType {
+  NDA
+  MSA
+  EMPLOYMENT
+  VENDOR
+  LEASE
+  OTHER
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  UNDER_REVIEW
+}
+
+enum NoticeStatus {
+  RECEIVED
+  UNDER_REVIEW
+  RESPONDED
+  CLOSED
+  OVERDUE
+}
+
+enum DeadlineStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum DocumentType {
+  CONTRACT
+  EVIDENCE
+  CORRESPONDENCE
+  FILING
+  OTHER
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+  REASSIGNED
+  DOCUMENT_UPLOADED
+  DEADLINE_COMPLETED
+  OWNERSHIP_TRANSFERRED
+}
+
+enum EntityType {
+  USER
+  CASE
+  CONTRACT
+  NOTICE
+  DEADLINE
+  TASK
+  DOCUMENT
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  fullName     String   @map("full_name") @db.VarChar(255)
+  role         UserRole
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ownedCases        LegalCase[]   @relation("CaseOwner")
+  ownedContracts    Contract[]    @relation("ContractOwner")
+  ownedNotices      LegalNotice[] @relation("NoticeOwner")
+  assignedTasks     Task[]        @relation("TaskAssignee")
+  createdTasks      Task[]        @relation("TaskCreator")
+  assignedDeadlines Deadline[]    @relation("DeadlineAssignee")
+  createdDeadlines  Deadline[]    @relation("DeadlineCreator")
+  uploadedDocuments Document[]
+  activityLogs      ActivityLog[]
+
+  @@map("users")
+}
+
+model LegalCase {
+  id            String     @id @default(uuid()) @db.Uuid
+  referenceCode String     @unique @map("reference_code") @db.VarChar(50)
+  title         String     @db.VarChar(500)
+  type          CaseType
+  status        CaseStatus
+  priority      Priority
+  ownerId       String     @map("owner_id") @db.Uuid
+  description   String?    @db.Text
+  openedDate    DateTime?  @map("opened_date") @db.Date
+  closedDate    DateTime?  @map("closed_date") @db.Date
+  deletedAt     DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner          User          @relation("CaseOwner", fields: [ownerId], references: [id])
+  parties        CaseParty[]
+  deadlines      Deadline[]
+  tasks          Task[]
+  documents      Document[]
+  relatedNotices LegalNotice[] @relation("NoticeRelatedCase")
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("legal_cases")
+}
+
+model CaseParty {
+  id          String    @id @default(uuid()) @db.Uuid
+  caseId      String    @map("case_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  partyType   PartyType @map("party_type")
+  contactInfo String?   @map("contact_info") @db.VarChar(500)
+  notes       String?   @db.Text
+
+  legalCase LegalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("case_parties")
+}
+
+model Contract {
+  id               String         @id @default(uuid()) @db.Uuid
+  referenceCode    String         @unique @map("reference_code") @db.VarChar(50)
+  title            String         @db.VarChar(500)
+  type             ContractType
+  status           ContractStatus
+  ownerId          String         @map("owner_id") @db.Uuid
+  counterpartyName String         @map("counterparty_name") @db.VarChar(255)
+  effectiveDate    DateTime?      @map("effective_date") @db.Date
+  expirationDate   DateTime?      @map("expiration_date") @db.Date
+  renewalDate      DateTime?      @map("renewal_date") @db.Date
+  keyTerms         String?        @map("key_terms") @db.Text
+  deletedAt        DateTime?      @map("deleted_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner          User          @relation("ContractOwner", fields: [ownerId], references: [id])
+  deadlines      Deadline[]
+  tasks          Task[]
+  documents      Document[]
+  relatedNotices LegalNotice[] @relation("NoticeRelatedContract")
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([expirationDate])
+  @@index([deletedAt])
+  @@map("contracts")
+}
+
+model LegalNotice {
+  id                String       @id @default(uuid()) @db.Uuid
+  referenceCode     String       @unique @map("reference_code") @db.VarChar(50)
+  title             String       @db.VarChar(500)
+  sender            String       @db.VarChar(255)
+  receivedDate      DateTime     @map("received_date") @db.Date
+  responseDeadline  DateTime     @map("response_deadline") @db.Date
+  status            NoticeStatus
+  ownerId           String       @map("owner_id") @db.Uuid
+  description       String?      @db.Text
+  relatedCaseId     String?      @map("related_case_id") @db.Uuid
+  relatedContractId String?      @map("related_contract_id") @db.Uuid
+  deletedAt         DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  owner           User      @relation("NoticeOwner", fields: [ownerId], references: [id])
+  relatedCase     LegalCase? @relation("NoticeRelatedCase", fields: [relatedCaseId], references: [id])
+  relatedContract Contract?  @relation("NoticeRelatedContract", fields: [relatedContractId], references: [id])
+  deadlines       Deadline[]
+  tasks           Task[]
+  documents       Document[]
+
+  @@index([ownerId])
+  @@index([responseDeadline])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("legal_notices")
+}
+
+model Deadline {
+  id          String         @id @default(uuid()) @db.Uuid
+  title       String         @db.VarChar(500)
+  dueDate     DateTime       @map("due_date") @db.Date
+  status      DeadlineStatus
+  assigneeId  String?        @map("assignee_id") @db.Uuid
+  caseId      String?        @map("case_id") @db.Uuid
+  contractId  String?        @map("contract_id") @db.Uuid
+  noticeId    String?        @map("notice_id") @db.Uuid
+  completedAt DateTime?      @map("completed_at") @db.Timestamptz(6)
+  createdById String         @map("created_by_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assignee  User?        @relation("DeadlineAssignee", fields: [assigneeId], references: [id])
+  createdBy User         @relation("DeadlineCreator", fields: [createdById], references: [id])
+  legalCase LegalCase?   @relation(fields: [caseId], references: [id])
+  contract  Contract?    @relation(fields: [contractId], references: [id])
+  notice    LegalNotice? @relation(fields: [noticeId], references: [id])
+
+  @@index([dueDate, status])
+  @@index([assigneeId, dueDate, status])
+  @@index([caseId])
+  @@index([contractId])
+  @@index([noticeId])
+  @@map("deadlines")
+}
+
+model Task {
+  id          String     @id @default(uuid()) @db.Uuid
+  title       String     @db.VarChar(500)
+  description String?    @db.Text
+  status      TaskStatus
+  assigneeId  String     @map("assignee_id") @db.Uuid
+  dueDate     DateTime?  @map("due_date") @db.Date
+  caseId      String?    @map("case_id") @db.Uuid
+  contractId  String?    @map("contract_id") @db.Uuid
+  noticeId    String?    @map("notice_id") @db.Uuid
+  createdById String     @map("created_by_id") @db.Uuid
+  completedAt DateTime?  @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assignee  User         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User         @relation("TaskCreator", fields: [createdById], references: [id])
+  legalCase LegalCase?   @relation(fields: [caseId], references: [id])
+  contract  Contract?    @relation(fields: [contractId], references: [id])
+  notice    LegalNotice? @relation(fields: [noticeId], references: [id])
+
+  @@index([assigneeId, status])
+  @@index([caseId])
+  @@index([contractId])
+  @@index([noticeId])
+  @@map("tasks")
+}
+
+model Document {
+  id           String       @id @default(uuid()) @db.Uuid
+  fileName     String       @map("file_name") @db.VarChar(500)
+  mimeType     String       @map("mime_type") @db.VarChar(255)
+  fileSize     Int          @map("file_size")
+  storageKey   String       @unique @map("storage_key") @db.VarChar(255)
+  documentType DocumentType @map("document_type")
+  description  String?      @db.Text
+  uploadedById String       @map("uploaded_by_id") @db.Uuid
+  caseId       String?      @map("case_id") @db.Uuid
+  contractId   String?      @map("contract_id") @db.Uuid
+  noticeId     String?      @map("notice_id") @db.Uuid
+  deletedAt    DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  uploadedAt   DateTime     @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
+  uploadedBy User         @relation(fields: [uploadedById], references: [id])
+  legalCase  LegalCase?   @relation(fields: [caseId], references: [id])
+  contract   Contract?    @relation(fields: [contractId], references: [id])
+  notice     LegalNotice? @relation(fields: [noticeId], references: [id])
+
+  @@index([caseId])
+  @@index([contractId])
+  @@index([noticeId])
+  @@map("documents")
+}
+
+model ActivityLog {
+  id         String      @id @default(uuid()) @db.Uuid
+  actorId    String      @map("actor_id") @db.Uuid
+  action     AuditAction
+  entityType EntityType  @map("entity_type")
+  entityId   String      @map("entity_id") @db.Uuid
+  metadata   Json        @default("{}")
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("activity_logs")
+}
