@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: phase-1-shared
     content: "Phase 1: Shared kernel — PrismaModule, AccessControlService, ActivityLogService, exception filter, guards"
-    status: pending
+    status: completed
   - id: phase-2-auth
     content: "Phase 2: Auth module — login, JWT strategy, @CurrentUser, seed users"
     status: pending
