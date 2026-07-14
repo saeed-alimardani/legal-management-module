@@ -68,4 +68,27 @@ describe('AccessControlService', () => {
   it('does not scope admin list filter', () => {
     expect(service.buildOwnerListFilter(admin)).toEqual({});
   });
+
+  it('scopes counsel deadline list to counsel user id', () => {
+    expect(service.buildDeadlineListFilter(counsel)).toEqual({
+      counselUserId: counsel.id,
+    });
+  });
+
+  it('does not scope admin deadline list', () => {
+    expect(service.buildDeadlineListFilter(admin)).toEqual({});
+  });
+
+  it('allows counsel to edit deadline when assigned', () => {
+    expect(
+      service.canEditDeadline(counsel, {
+        ownerId: 'other-id',
+        assigneeId: counsel.id,
+      }),
+    ).toBe(true);
+  });
+
+  it('denies counsel cancel when not parent owner', () => {
+    expect(service.canEdit(counsel, { ownerId: 'other-id' })).toBe(false);
+  });
 });

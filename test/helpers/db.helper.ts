@@ -116,6 +116,17 @@ export async function cleanupTestCases(): Promise<void> {
   await client.activityLog.deleteMany({
     where: { entityType: 'CASE' },
   });
+  await client.deadline.deleteMany({
+    where: { caseId: { not: null } },
+  });
   await client.caseParty.deleteMany();
   await client.legalCase.deleteMany();
+}
+
+export async function cleanupTestDeadlines(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'DEADLINE' },
+  });
+  await client.deadline.deleteMany();
 }

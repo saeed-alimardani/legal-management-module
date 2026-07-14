@@ -90,4 +90,55 @@ export class AccessControlService {
 
     return {};
   }
+
+  /**
+   * Counsel may see deadlines they own via parent matter or are assigned to.
+   * Admin/Manager/Viewer → no extra filter (full read scope).
+   */
+  buildDeadlineListFilter(user: AuthenticatedUser): {
+    counselUserId?: string;
+  } {
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return { counselUserId: user.id };
+    }
+
+    return {};
+  }
+
+  /** Parent owner or assignee may update; Viewer never. */
+  canEditDeadline(
+    user: AuthenticatedUser,
+    resource: OwnedResource,
+  ): boolean {
+    if (this.isAdminOrManager(user)) {
+      return true;
+    }
+
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return (
+        resource.ownerId === user.id || resource.assigneeId === user.id
+      );
+    }
+
+    return false;
+  }
+
+  assertCanEditDeadline(
+    user: AuthenticatedUser,
+    resource: OwnedResource,
+  ): void {
+    if (!this.canEditDeadline(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to edit this deadline',
+      );
+    }
+  }
+
+  /** Cancel requires parent ownership (or admin/manager). */
+  assertCanCancelDeadline(
+    user: AuthenticatedUser,
+    resource: Pick<OwnedResource, 'ownerId'>,
+  ): void {
+    this.assertCanEdit(user, resource);
+  }
 }
