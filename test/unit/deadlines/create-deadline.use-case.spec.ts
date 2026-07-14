@@ -83,7 +83,9 @@ describe('CreateDeadlineUseCase', () => {
       deadlineRepository as unknown as PrismaDeadlineRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
-      { get: jest.fn().mockReturnValue('Asia/Tehran') } as unknown as ConfigService,
+      {
+        get: jest.fn().mockReturnValue('Asia/Tehran'),
+      } as unknown as ConfigService,
     );
   });
 

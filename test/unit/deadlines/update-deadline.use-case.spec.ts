@@ -15,7 +15,10 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('UpdateDeadlineUseCase', () => {
   let useCase: UpdateDeadlineUseCase;
   let deadlineRepository: jest.Mocked<
-    Pick<PrismaDeadlineRepository, 'findById' | 'update' | 'userExistsAndActive'>
+    Pick<
+      PrismaDeadlineRepository,
+      'findById' | 'update' | 'userExistsAndActive'
+    >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
 
@@ -70,7 +73,9 @@ describe('UpdateDeadlineUseCase', () => {
       deadlineRepository as unknown as PrismaDeadlineRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
-      { get: jest.fn().mockReturnValue('Asia/Tehran') } as unknown as ConfigService,
+      {
+        get: jest.fn().mockReturnValue('Asia/Tehran'),
+      } as unknown as ConfigService,
     );
   });
 

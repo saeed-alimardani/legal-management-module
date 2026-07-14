@@ -1,15 +1,9 @@
-import {
-  CaseStatus,
-  CaseType,
-  PartyType,
-  Priority,
-} from '@prisma/client';
+import { CaseStatus, CaseType, PartyType, Priority } from '@prisma/client';
 import { PrismaCaseRepository } from '../../../src/modules/cases/infrastructure/prisma-case.repository';
 import { PrismaService } from '../../../src/prisma/prisma.service';
 import {
   cleanupTestCases,
   disconnectTestPrisma,
-  getTestPrisma,
   getUserIdByEmail,
   seedTestUsers,
 } from '../../helpers/db.helper';
@@ -109,10 +103,7 @@ describe('PrismaCaseRepository (integration)', () => {
       ownerId: secondOwnerId,
     });
 
-    const scoped = await repository.list(
-      { page: 1, limit: 20 },
-      { ownerId },
-    );
+    const scoped = await repository.list({ page: 1, limit: 20 }, { ownerId });
 
     expect(scoped.total).toBe(1);
     expect(scoped.items[0].id).toBe(owned.id);
@@ -207,7 +198,9 @@ describe('PrismaCaseRepository (integration)', () => {
   it('validates active users exist', async () => {
     expect(await repository.userExistsAndActive(ownerId)).toBe(true);
     expect(
-      await repository.userExistsAndActive('00000000-0000-0000-0000-000000000000'),
+      await repository.userExistsAndActive(
+        '00000000-0000-0000-0000-000000000000',
+      ),
     ).toBe(false);
   });
 });

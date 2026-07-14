@@ -79,9 +79,8 @@ export class CreateCaseUseCase {
       );
     }
 
-    const ownerExists = await this.caseRepository.userExistsAndActive(
-      requestedOwnerId,
-    );
+    const ownerExists =
+      await this.caseRepository.userExistsAndActive(requestedOwnerId);
 
     if (!ownerExists) {
       throw new NotFoundException('Owner user not found or inactive');

@@ -11,8 +11,7 @@ export interface OwnedResource {
 export class AccessControlService {
   isAdminOrManager(user: AuthenticatedUser): boolean {
     return (
-      user.role === UserRole.LEGAL_ADMIN ||
-      user.role === UserRole.LEGAL_MANAGER
+      user.role === UserRole.LEGAL_ADMIN || user.role === UserRole.LEGAL_MANAGER
     );
   }
 
@@ -30,16 +29,16 @@ export class AccessControlService {
     }
 
     if (user.role === UserRole.LEGAL_COUNSEL) {
-      return (
-        resource.ownerId === user.id ||
-        resource.assigneeId === user.id
-      );
+      return resource.ownerId === user.id || resource.assigneeId === user.id;
     }
 
     return false;
   }
 
-  canEdit(user: AuthenticatedUser, resource: Pick<OwnedResource, 'ownerId'>): boolean {
+  canEdit(
+    user: AuthenticatedUser,
+    resource: Pick<OwnedResource, 'ownerId'>,
+  ): boolean {
     if (this.isAdminOrManager(user)) {
       return true;
     }
@@ -66,7 +65,9 @@ export class AccessControlService {
     resource: Pick<OwnedResource, 'ownerId'>,
   ): void {
     if (!this.canEdit(user, resource)) {
-      throw new ForbiddenException('You do not have permission to edit this resource');
+      throw new ForbiddenException(
+        'You do not have permission to edit this resource',
+      );
     }
   }
 
@@ -78,7 +79,9 @@ export class AccessControlService {
 
   assertCanReassign(user: AuthenticatedUser): void {
     if (!this.canReassign(user)) {
-      throw new ForbiddenException('You do not have permission to reassign ownership');
+      throw new ForbiddenException(
+        'You do not have permission to reassign ownership',
+      );
     }
   }
 
@@ -106,18 +109,13 @@ export class AccessControlService {
   }
 
   /** Parent owner or assignee may update; Viewer never. */
-  canEditDeadline(
-    user: AuthenticatedUser,
-    resource: OwnedResource,
-  ): boolean {
+  canEditDeadline(user: AuthenticatedUser, resource: OwnedResource): boolean {
     if (this.isAdminOrManager(user)) {
       return true;
     }
 
     if (user.role === UserRole.LEGAL_COUNSEL) {
-      return (
-        resource.ownerId === user.id || resource.assigneeId === user.id
-      );
+      return resource.ownerId === user.id || resource.assigneeId === user.id;
     }
 
     return false;

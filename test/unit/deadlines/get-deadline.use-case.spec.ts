@@ -8,7 +8,9 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 
 describe('GetDeadlineUseCase', () => {
   let useCase: GetDeadlineUseCase;
-  let deadlineRepository: jest.Mocked<Pick<PrismaDeadlineRepository, 'findById'>>;
+  let deadlineRepository: jest.Mocked<
+    Pick<PrismaDeadlineRepository, 'findById'>
+  >;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -50,7 +52,9 @@ describe('GetDeadlineUseCase', () => {
     useCase = new GetDeadlineUseCase(
       deadlineRepository as unknown as PrismaDeadlineRepository,
       new AccessControlService(),
-      { get: jest.fn().mockReturnValue('Asia/Tehran') } as unknown as ConfigService,
+      {
+        get: jest.fn().mockReturnValue('Asia/Tehran'),
+      } as unknown as ConfigService,
     );
   });
 

@@ -1,10 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import {
-  CaseStatus,
-  CaseType,
-  Priority,
-  UserRole,
-} from '@prisma/client';
+import { CaseStatus, CaseType, Priority, UserRole } from '@prisma/client';
 import { GetCaseUseCase } from '../../../src/modules/cases/application/get-case.use-case';
 import { PrismaCaseRepository } from '../../../src/modules/cases/infrastructure/prisma-case.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
@@ -76,9 +71,9 @@ describe('GetCaseUseCase', () => {
   });
 
   it('denies counsel access to another counsels case', async () => {
-    await expect(
-      useCase.execute(otherCounsel, legalCase.id),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(useCase.execute(otherCounsel, legalCase.id)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws when case is not found', async () => {

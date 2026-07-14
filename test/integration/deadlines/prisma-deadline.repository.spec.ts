@@ -6,7 +6,6 @@ import {
   cleanupTestCases,
   cleanupTestDeadlines,
   disconnectTestPrisma,
-  getTestPrisma,
   getUserIdByEmail,
   seedTestUsers,
 } from '../../helpers/db.helper';

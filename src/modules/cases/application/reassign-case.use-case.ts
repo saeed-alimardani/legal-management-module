@@ -14,11 +14,7 @@ export class ReassignCaseUseCase {
     private readonly activityLogService: ActivityLogService,
   ) {}
 
-  async execute(
-    user: AuthenticatedUser,
-    caseId: string,
-    newOwnerId: string,
-  ) {
+  async execute(user: AuthenticatedUser, caseId: string, newOwnerId: string) {
     this.accessControl.assertCanReassign(user);
 
     const existing = await this.caseRepository.findById(caseId);
@@ -31,7 +27,8 @@ export class ReassignCaseUseCase {
       return buildSingleResponse(existing);
     }
 
-    const ownerExists = await this.caseRepository.userExistsAndActive(newOwnerId);
+    const ownerExists =
+      await this.caseRepository.userExistsAndActive(newOwnerId);
 
     if (!ownerExists) {
       throw new NotFoundException('New owner user not found or inactive');

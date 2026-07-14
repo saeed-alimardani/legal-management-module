@@ -141,9 +141,7 @@ export class PrismaDeadlineRepository {
     return user !== null;
   }
 
-  private buildScopeWhere(
-    scope: DeadlineListScope,
-  ): Prisma.DeadlineWhereInput {
+  private buildScopeWhere(scope: DeadlineListScope): Prisma.DeadlineWhereInput {
     if (!scope.counselUserId) {
       return {};
     }

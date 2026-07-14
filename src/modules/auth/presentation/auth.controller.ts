@@ -1,4 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -23,7 +31,9 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Authenticate with email and password' })
-  @ApiUnauthorizedResponse({ description: 'Invalid credentials or inactive user' })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid credentials or inactive user',
+  })
   login(@Body() dto: LoginDto) {
     return this.loginUseCase.execute(dto);
   }

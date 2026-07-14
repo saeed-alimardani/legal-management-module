@@ -16,10 +16,7 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('ReassignCaseUseCase', () => {
   let useCase: ReassignCaseUseCase;
   let caseRepository: jest.Mocked<
-    Pick<
-      PrismaCaseRepository,
-      'findById' | 'reassign' | 'userExistsAndActive'
-    >
+    Pick<PrismaCaseRepository, 'findById' | 'reassign' | 'userExistsAndActive'>
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
 

@@ -14,9 +14,9 @@ describe('reference-code.util', () => {
       expect(formatReferenceCode(REFERENCE_CODE_PREFIX.CASE, 42, 2026)).toBe(
         'CASE-2026-00042',
       );
-      expect(formatReferenceCode(REFERENCE_CODE_PREFIX.CONTRACT, 99999, 2026)).toBe(
-        'CTR-2026-99999',
-      );
+      expect(
+        formatReferenceCode(REFERENCE_CODE_PREFIX.CONTRACT, 99999, 2026),
+      ).toBe('CTR-2026-99999');
     });
 
     it('uses current year by default', () => {
@@ -30,19 +30,35 @@ describe('reference-code.util', () => {
   describe('parseReferenceCodeSequence', () => {
     it('parses valid reference codes', () => {
       expect(
-        parseReferenceCodeSequence('CASE-2026-00001', REFERENCE_CODE_PREFIX.CASE, 2026),
+        parseReferenceCodeSequence(
+          'CASE-2026-00001',
+          REFERENCE_CODE_PREFIX.CASE,
+          2026,
+        ),
       ).toBe(1);
       expect(
-        parseReferenceCodeSequence('CASE-2026-12345', REFERENCE_CODE_PREFIX.CASE, 2026),
+        parseReferenceCodeSequence(
+          'CASE-2026-12345',
+          REFERENCE_CODE_PREFIX.CASE,
+          2026,
+        ),
       ).toBe(12345);
     });
 
     it('returns null for mismatched prefix or year', () => {
       expect(
-        parseReferenceCodeSequence('CTR-2026-00001', REFERENCE_CODE_PREFIX.CASE, 2026),
+        parseReferenceCodeSequence(
+          'CTR-2026-00001',
+          REFERENCE_CODE_PREFIX.CASE,
+          2026,
+        ),
       ).toBeNull();
       expect(
-        parseReferenceCodeSequence('CASE-2025-00001', REFERENCE_CODE_PREFIX.CASE, 2026),
+        parseReferenceCodeSequence(
+          'CASE-2025-00001',
+          REFERENCE_CODE_PREFIX.CASE,
+          2026,
+        ),
       ).toBeNull();
       expect(
         parseReferenceCodeSequence('invalid', REFERENCE_CODE_PREFIX.CASE, 2026),

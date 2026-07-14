@@ -80,7 +80,10 @@ export class ActivityLogService {
   private buildListScope(
     user: AuthenticatedUser,
   ): Prisma.ActivityLogWhereInput {
-    if (this.accessControl.isAdminOrManager(user) || this.accessControl.isViewer(user)) {
+    if (
+      this.accessControl.isAdminOrManager(user) ||
+      this.accessControl.isViewer(user)
+    ) {
       return {};
     }
 

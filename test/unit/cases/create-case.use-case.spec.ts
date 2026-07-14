@@ -23,9 +23,7 @@ describe('CreateCaseUseCase', () => {
   let caseRepository: jest.Mocked<
     Pick<
       PrismaCaseRepository,
-      | 'generateNextReferenceCode'
-      | 'create'
-      | 'userExistsAndActive'
+      'generateNextReferenceCode' | 'create' | 'userExistsAndActive'
     >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
@@ -147,7 +145,9 @@ describe('CreateCaseUseCase', () => {
       ownerId: otherOwnerId,
     });
 
-    expect(caseRepository.userExistsAndActive).toHaveBeenCalledWith(otherOwnerId);
+    expect(caseRepository.userExistsAndActive).toHaveBeenCalledWith(
+      otherOwnerId,
+    );
     expect(caseRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ ownerId: otherOwnerId }),
     );

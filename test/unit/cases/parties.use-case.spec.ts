@@ -82,9 +82,9 @@ describe('ListPartiesUseCase', () => {
   });
 
   it('denies unauthorized counsel', async () => {
-    await expect(
-      useCase.execute(otherCounsel, legalCase.id),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(useCase.execute(otherCounsel, legalCase.id)).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws when case not found', async () => {

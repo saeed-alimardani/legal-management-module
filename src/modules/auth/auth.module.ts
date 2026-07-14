@@ -26,12 +26,7 @@ import { AuthController } from './presentation/auth.controller';
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    PrismaUserRepository,
-    LoginUseCase,
-    GetMeUseCase,
-    JwtStrategy,
-  ],
+  providers: [PrismaUserRepository, LoginUseCase, GetMeUseCase, JwtStrategy],
   exports: [JwtModule, PassportModule, PrismaUserRepository],
 })
 export class AuthModule {}

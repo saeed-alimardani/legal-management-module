@@ -16,10 +16,11 @@ todos:
     status: completed
   - id: phase-4-deadlines
     content: "Phase 4: Deadlines module — CRUD + upcoming/overdue/today/assigned-to-me views"
-    status: pending
+    status: completed
   - id: phase-5-matters
     content: "Phase 5: Contracts + Notices modules (mirror cases pattern; notice auto-deadline)"
-    status: pending
+    status: completed
+
   - id: phase-6-collab
     content: "Phase 6: Tasks + Documents (FileStoragePort + LocalFileStorageAdapter) + ActivityLog read API"
     status: pending

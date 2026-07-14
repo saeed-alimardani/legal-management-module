@@ -2,7 +2,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
-import { AuthUserResponse, JwtPayload, LoginResult } from '../domain/auth.types';
+import {
+  AuthUserResponse,
+  JwtPayload,
+  LoginResult,
+} from '../domain/auth.types';
 import { PrismaUserRepository } from '../infrastructure/prisma-user.repository';
 
 export interface LoginCommand {

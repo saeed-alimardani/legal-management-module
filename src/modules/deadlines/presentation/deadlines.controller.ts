@@ -65,11 +65,7 @@ export class DeadlinesController {
   }
 
   @Post()
-  @Roles(
-    UserRole.LEGAL_ADMIN,
-    UserRole.LEGAL_MANAGER,
-    UserRole.LEGAL_COUNSEL,
-  )
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
   @ApiOperation({ summary: 'Create a deadline on a parent matter' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   create(
@@ -99,11 +95,7 @@ export class DeadlinesController {
   }
 
   @Patch(':id')
-  @Roles(
-    UserRole.LEGAL_ADMIN,
-    UserRole.LEGAL_MANAGER,
-    UserRole.LEGAL_COUNSEL,
-  )
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
   @ApiOperation({ summary: 'Update or complete a deadline' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(
@@ -120,11 +112,7 @@ export class DeadlinesController {
   }
 
   @Delete(':id')
-  @Roles(
-    UserRole.LEGAL_ADMIN,
-    UserRole.LEGAL_MANAGER,
-    UserRole.LEGAL_COUNSEL,
-  )
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancel a deadline (status=CANCELLED)' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })

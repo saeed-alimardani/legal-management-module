@@ -1,15 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsDateString,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
-  ValidateNested,
 } from 'class-validator';
 import { PartyType } from '../../domain/party-type.enum';
 

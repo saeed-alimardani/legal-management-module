@@ -116,8 +116,13 @@ export async function cleanupTestCases(): Promise<void> {
   await client.activityLog.deleteMany({
     where: { entityType: 'CASE' },
   });
+  // Delete child deadlines first — ON DELETE SET NULL would violate single-parent CHECK
   await client.deadline.deleteMany({
     where: { caseId: { not: null } },
+  });
+  await client.legalNotice.updateMany({
+    where: { relatedCaseId: { not: null } },
+    data: { relatedCaseId: null },
   });
   await client.caseParty.deleteMany();
   await client.legalCase.deleteMany();
@@ -129,4 +134,32 @@ export async function cleanupTestDeadlines(): Promise<void> {
     where: { entityType: 'DEADLINE' },
   });
   await client.deadline.deleteMany();
+}
+
+export async function cleanupTestContracts(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'CONTRACT' },
+  });
+  await client.deadline.deleteMany({
+    where: { contractId: { not: null } },
+  });
+  await client.legalNotice.updateMany({
+    where: { relatedContractId: { not: null } },
+    data: { relatedContractId: null },
+  });
+  await client.contract.deleteMany();
+}
+
+export async function cleanupTestNotices(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: {
+      OR: [{ entityType: 'NOTICE' }, { entityType: 'DEADLINE' }],
+    },
+  });
+  await client.deadline.deleteMany({
+    where: { noticeId: { not: null } },
+  });
+  await client.legalNotice.deleteMany();
 }

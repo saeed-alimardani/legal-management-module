@@ -15,10 +15,7 @@ export function toPersianDateString(date: Date): string {
  * Formats a UTC instant as Jalali date-time in the given IANA timezone.
  * Example: `1405/04/23 15:45:00`
  */
-export function toPersianDateTimeString(
-  date: Date,
-  timeZone: string,
-): string {
+export function toPersianDateTimeString(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
@@ -80,9 +77,7 @@ export function gregorianToJalali(
   }
 
   const jm =
-    days < 186
-      ? 1 + Math.floor(days / 31)
-      : 7 + Math.floor((days - 186) / 30);
+    days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
   const jd = 1 + (days < 186 ? days % 31 : (days - 186) % 30);
 
   return [jy, jm, jd];

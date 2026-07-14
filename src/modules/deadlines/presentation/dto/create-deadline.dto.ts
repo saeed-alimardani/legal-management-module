@@ -36,24 +36,17 @@ export class CreateDeadlineDto {
   assigneeId?: string;
 
   @ApiPropertyOptional({ description: 'Exactly one parent FK required' })
-  @ValidateIf(
-    (dto: CreateDeadlineDto) =>
-      !dto.contractId && !dto.noticeId,
-  )
+  @ValidateIf((dto: CreateDeadlineDto) => !dto.contractId && !dto.noticeId)
   @IsUUID()
   caseId?: string;
 
   @ApiPropertyOptional()
-  @ValidateIf(
-    (dto: CreateDeadlineDto) => !dto.caseId && !dto.noticeId,
-  )
+  @ValidateIf((dto: CreateDeadlineDto) => !dto.caseId && !dto.noticeId)
   @IsUUID()
   contractId?: string;
 
   @ApiPropertyOptional()
-  @ValidateIf(
-    (dto: CreateDeadlineDto) => !dto.caseId && !dto.contractId,
-  )
+  @ValidateIf((dto: CreateDeadlineDto) => !dto.caseId && !dto.contractId)
   @IsUUID()
   noticeId?: string;
 }

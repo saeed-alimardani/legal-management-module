@@ -64,7 +64,10 @@ describe('LoginUseCase', () => {
     userRepository.findByEmail.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ email: 'missing@legal.local', password: 'Password123!' }),
+      useCase.execute({
+        email: 'missing@legal.local',
+        password: 'Password123!',
+      }),
     ).rejects.toThrow(UnauthorizedException);
   });
 

@@ -73,11 +73,7 @@ export class CasesController {
   }
 
   @Post()
-  @Roles(
-    UserRole.LEGAL_ADMIN,
-    UserRole.LEGAL_MANAGER,
-    UserRole.LEGAL_COUNSEL,
-  )
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
   @ApiOperation({ summary: 'Create a new case with optional parties' })
   @ApiForbiddenResponse({ description: 'Insufficient role permissions' })
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateCaseDto) {
@@ -106,11 +102,7 @@ export class CasesController {
   }
 
   @Patch(':id')
-  @Roles(
-    UserRole.LEGAL_ADMIN,
-    UserRole.LEGAL_MANAGER,
-    UserRole.LEGAL_COUNSEL,
-  )
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
   @ApiOperation({ summary: 'Update case fields or status' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(
@@ -154,7 +146,9 @@ export class CasesController {
   @Post(':id/reassign')
   @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Reassign case ownership' })
-  @ApiForbiddenResponse({ description: 'Only admins and managers can reassign' })
+  @ApiForbiddenResponse({
+    description: 'Only admins and managers can reassign',
+  })
   reassign(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -173,11 +167,7 @@ export class CasesController {
   }
 
   @Post(':id/parties')
-  @Roles(
-    UserRole.LEGAL_ADMIN,
-    UserRole.LEGAL_MANAGER,
-    UserRole.LEGAL_COUNSEL,
-  )
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
   @ApiOperation({ summary: 'Add a party to a case' })
   addParty(
     @CurrentUser() user: AuthenticatedUser,

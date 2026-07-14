@@ -12,10 +12,7 @@ export class ListCasesUseCase {
     private readonly accessControl: AccessControlService,
   ) {}
 
-  async execute(
-    user: AuthenticatedUser,
-    filters: ListCasesFilters,
-  ) {
+  async execute(user: AuthenticatedUser, filters: ListCasesFilters) {
     const scope = this.accessControl.buildOwnerListFilter(user);
     const { items, total } = await this.caseRepository.list(filters, scope);
 

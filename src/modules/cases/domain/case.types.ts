@@ -1,9 +1,4 @@
-import {
-  CaseStatus,
-  CaseType,
-  PartyType,
-  Priority,
-} from '@prisma/client';
+import { CaseStatus, CaseType, PartyType, Priority } from '@prisma/client';
 
 export interface CasePartyEntity {
   id: string;

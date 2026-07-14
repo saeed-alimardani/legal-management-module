@@ -182,7 +182,10 @@ describe('Cases (e2e)', () => {
       });
 
       expect(logs.map((log) => log.action)).toEqual(
-        expect.arrayContaining([AuditAction.CREATED, AuditAction.STATUS_CHANGED]),
+        expect.arrayContaining([
+          AuditAction.CREATED,
+          AuditAction.STATUS_CHANGED,
+        ]),
       );
 
       const statusLog = logs.find(

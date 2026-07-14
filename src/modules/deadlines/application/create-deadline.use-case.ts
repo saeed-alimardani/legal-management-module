@@ -59,8 +59,9 @@ export class CreateDeadlineUseCase {
     this.accessControl.assertCanEdit(user, { ownerId: parent.ownerId });
 
     if (command.assigneeId) {
-      const assigneeExists =
-        await this.deadlineRepository.userExistsAndActive(command.assigneeId);
+      const assigneeExists = await this.deadlineRepository.userExistsAndActive(
+        command.assigneeId,
+      );
 
       if (!assigneeExists) {
         throw new NotFoundException('Assignee user not found or inactive');

@@ -95,8 +95,6 @@ describe('PrismaUserRepository (integration)', () => {
     const bcrypt = await import('bcrypt');
     const user = await repository.findByEmail('viewer@legal.local');
 
-    expect(
-      await bcrypt.compare(TEST_PASSWORD, user!.passwordHash),
-    ).toBe(true);
+    expect(await bcrypt.compare(TEST_PASSWORD, user!.passwordHash)).toBe(true);
   });
 });
