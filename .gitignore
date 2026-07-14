@@ -147,3 +147,7 @@ uploads/
 dist/
 .env
 !.env.example
+
+# IDE / editor (local only — do not publish)
+.idea/
+.cursor/
