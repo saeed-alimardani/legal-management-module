@@ -47,7 +47,11 @@ export class ActivityLogService {
     });
   }
 
-  async list(filters: ActivityLogListFilters, user: AuthenticatedUser) {
+  async list(
+    filters: ActivityLogListFilters,
+    user: AuthenticatedUser,
+    options?: { skipCounselActorScope?: boolean },
+  ) {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 20;
     const skip = (page - 1) * limit;
@@ -56,7 +60,7 @@ export class ActivityLogService {
       ...(filters.entityType ? { entityType: filters.entityType } : {}),
       ...(filters.entityId ? { entityId: filters.entityId } : {}),
       ...(filters.actorId ? { actorId: filters.actorId } : {}),
-      ...this.buildListScope(user),
+      ...this.buildListScope(user, options?.skipCounselActorScope === true),
     };
 
     const [items, total] = await Promise.all([
@@ -79,10 +83,12 @@ export class ActivityLogService {
 
   private buildListScope(
     user: AuthenticatedUser,
+    skipCounselActorScope = false,
   ): Prisma.ActivityLogWhereInput {
     if (
       this.accessControl.isAdminOrManager(user) ||
-      this.accessControl.isViewer(user)
+      this.accessControl.isViewer(user) ||
+      skipCounselActorScope
     ) {
       return {};
     }

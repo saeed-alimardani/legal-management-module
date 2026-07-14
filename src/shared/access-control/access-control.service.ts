@@ -7,6 +7,15 @@ export interface OwnedResource {
   assigneeId?: string | null;
 }
 
+export interface TaskResource extends OwnedResource {
+  createdById: string;
+}
+
+export interface DocumentResource {
+  ownerId: string;
+  uploadedById: string;
+}
+
 @Injectable()
 export class AccessControlService {
   isAdminOrManager(user: AuthenticatedUser): boolean {
@@ -138,5 +147,112 @@ export class AccessControlService {
     resource: Pick<OwnedResource, 'ownerId'>,
   ): void {
     this.assertCanEdit(user, resource);
+  }
+
+  /**
+   * Counsel may see tasks on matters they own or tasks assigned to them.
+   * Admin/Manager/Viewer → no extra filter (full read scope).
+   */
+  buildTaskListFilter(user: AuthenticatedUser): {
+    counselUserId?: string;
+  } {
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return { counselUserId: user.id };
+    }
+
+    return {};
+  }
+
+  /** Admin/Manager, parent owner, assignee, or creator may update. */
+  canEditTask(user: AuthenticatedUser, resource: TaskResource): boolean {
+    if (this.isAdminOrManager(user)) {
+      return true;
+    }
+
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return (
+        resource.ownerId === user.id ||
+        resource.assigneeId === user.id ||
+        resource.createdById === user.id
+      );
+    }
+
+    return false;
+  }
+
+  assertCanEditTask(user: AuthenticatedUser, resource: TaskResource): void {
+    if (!this.canEditTask(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to edit this task',
+      );
+    }
+  }
+
+  /** Cancel requires admin/manager or creator. */
+  canCancelTask(
+    user: AuthenticatedUser,
+    resource: Pick<TaskResource, 'createdById'>,
+  ): boolean {
+    if (this.isAdminOrManager(user)) {
+      return true;
+    }
+
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return resource.createdById === user.id;
+    }
+
+    return false;
+  }
+
+  assertCanCancelTask(
+    user: AuthenticatedUser,
+    resource: Pick<TaskResource, 'createdById'>,
+  ): void {
+    if (!this.canCancelTask(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to cancel this task',
+      );
+    }
+  }
+
+  /**
+   * Counsel may see documents on matters they own.
+   * Admin/Manager/Viewer → no extra filter.
+   */
+  buildDocumentListFilter(user: AuthenticatedUser): {
+    counselUserId?: string;
+  } {
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return { counselUserId: user.id };
+    }
+
+    return {};
+  }
+
+  /** Soft-delete: admin/manager or uploader. */
+  canDeleteDocument(
+    user: AuthenticatedUser,
+    resource: Pick<DocumentResource, 'uploadedById'>,
+  ): boolean {
+    if (this.isAdminOrManager(user)) {
+      return true;
+    }
+
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return resource.uploadedById === user.id;
+    }
+
+    return false;
+  }
+
+  assertCanDeleteDocument(
+    user: AuthenticatedUser,
+    resource: Pick<DocumentResource, 'uploadedById'>,
+  ): void {
+    if (!this.canDeleteDocument(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to delete this document',
+      );
+    }
   }
 }

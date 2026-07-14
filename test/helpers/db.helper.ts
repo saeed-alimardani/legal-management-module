@@ -111,13 +111,35 @@ export async function getUserIdByEmail(email: string): Promise<string> {
   return user.id;
 }
 
+export async function cleanupTestTasks(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'TASK' },
+  });
+  await client.task.deleteMany();
+}
+
+export async function cleanupTestDocuments(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'DOCUMENT' },
+  });
+  await client.document.deleteMany();
+}
+
 export async function cleanupTestCases(): Promise<void> {
   const client = getTestPrisma();
   await client.activityLog.deleteMany({
     where: { entityType: 'CASE' },
   });
-  // Delete child deadlines first — ON DELETE SET NULL would violate single-parent CHECK
+  // Delete children first — ON DELETE SET NULL would violate single-parent CHECK
   await client.deadline.deleteMany({
+    where: { caseId: { not: null } },
+  });
+  await client.task.deleteMany({
+    where: { caseId: { not: null } },
+  });
+  await client.document.deleteMany({
     where: { caseId: { not: null } },
   });
   await client.legalNotice.updateMany({
@@ -144,6 +166,12 @@ export async function cleanupTestContracts(): Promise<void> {
   await client.deadline.deleteMany({
     where: { contractId: { not: null } },
   });
+  await client.task.deleteMany({
+    where: { contractId: { not: null } },
+  });
+  await client.document.deleteMany({
+    where: { contractId: { not: null } },
+  });
   await client.legalNotice.updateMany({
     where: { relatedContractId: { not: null } },
     data: { relatedContractId: null },
@@ -159,6 +187,12 @@ export async function cleanupTestNotices(): Promise<void> {
     },
   });
   await client.deadline.deleteMany({
+    where: { noticeId: { not: null } },
+  });
+  await client.task.deleteMany({
+    where: { noticeId: { not: null } },
+  });
+  await client.document.deleteMany({
     where: { noticeId: { not: null } },
   });
   await client.legalNotice.deleteMany();

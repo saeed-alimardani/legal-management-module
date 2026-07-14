@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { AccessControlService } from '../../src/shared/access-control/access-control.service';
 import { AuthenticatedUser } from '../../src/shared/types/authenticated-user.type';
@@ -90,5 +91,231 @@ describe('AccessControlService', () => {
 
   it('denies counsel cancel when not parent owner', () => {
     expect(service.canEdit(counsel, { ownerId: 'other-id' })).toBe(false);
+  });
+
+  it('allows counsel to edit task when assignee or creator', () => {
+    expect(
+      service.canEditTask(counsel, {
+        ownerId: 'other-id',
+        assigneeId: counsel.id,
+        createdById: 'creator-id',
+      }),
+    ).toBe(true);
+
+    expect(
+      service.canEditTask(counsel, {
+        ownerId: 'other-id',
+        assigneeId: 'other-assignee',
+        createdById: counsel.id,
+      }),
+    ).toBe(true);
+  });
+
+  it('allows counsel to cancel only own created tasks', () => {
+    expect(service.canCancelTask(counsel, { createdById: counsel.id })).toBe(
+      true,
+    );
+    expect(service.canCancelTask(counsel, { createdById: 'other-id' })).toBe(
+      false,
+    );
+  });
+
+  it('allows counsel to delete own uploaded documents', () => {
+    expect(
+      service.canDeleteDocument(counsel, { uploadedById: counsel.id }),
+    ).toBe(true);
+    expect(
+      service.canDeleteDocument(counsel, { uploadedById: 'other-id' }),
+    ).toBe(false);
+  });
+
+  // --- buildTaskListFilter ---
+
+  describe('buildTaskListFilter', () => {
+    it('scopes counsel task list to counselUserId', () => {
+      expect(service.buildTaskListFilter(counsel)).toEqual({
+        counselUserId: counsel.id,
+      });
+    });
+
+    it('does not scope admin task list', () => {
+      expect(service.buildTaskListFilter(admin)).toEqual({});
+    });
+
+    it('does not scope manager task list', () => {
+      expect(service.buildTaskListFilter(manager)).toEqual({});
+    });
+
+    it('does not scope viewer task list', () => {
+      expect(service.buildTaskListFilter(viewer)).toEqual({});
+    });
+  });
+
+  // --- buildDocumentListFilter ---
+
+  describe('buildDocumentListFilter', () => {
+    it('scopes counsel document list to counselUserId', () => {
+      expect(service.buildDocumentListFilter(counsel)).toEqual({
+        counselUserId: counsel.id,
+      });
+    });
+
+    it('does not scope admin document list', () => {
+      expect(service.buildDocumentListFilter(admin)).toEqual({});
+    });
+
+    it('does not scope viewer document list', () => {
+      expect(service.buildDocumentListFilter(viewer)).toEqual({});
+    });
+  });
+
+  // --- canEditTask ---
+
+  describe('canEditTask', () => {
+    it('denies counsel who is not owner, assignee, or creator', () => {
+      expect(
+        service.canEditTask(counsel, {
+          ownerId: 'other-owner',
+          assigneeId: 'other-assignee',
+          createdById: 'other-creator',
+        }),
+      ).toBe(false);
+    });
+
+    it('allows counsel who is the parent owner', () => {
+      expect(
+        service.canEditTask(counsel, {
+          ownerId: counsel.id,
+          assigneeId: 'other-assignee',
+          createdById: 'other-creator',
+        }),
+      ).toBe(true);
+    });
+
+    it('allows admin to edit any task', () => {
+      expect(
+        service.canEditTask(admin, {
+          ownerId: 'other-owner',
+          assigneeId: 'other-assignee',
+          createdById: 'other-creator',
+        }),
+      ).toBe(true);
+    });
+
+    it('denies viewer to edit any task', () => {
+      expect(
+        service.canEditTask(viewer, {
+          ownerId: 'other-owner',
+          assigneeId: viewer.id,
+          createdById: viewer.id,
+        }),
+      ).toBe(false);
+    });
+  });
+
+  // --- canCancelTask ---
+
+  describe('canCancelTask', () => {
+    it('allows admin to cancel any task', () => {
+      expect(service.canCancelTask(admin, { createdById: 'other-id' })).toBe(true);
+    });
+
+    it('allows manager to cancel any task', () => {
+      expect(service.canCancelTask(manager, { createdById: 'other-id' })).toBe(true);
+    });
+
+    it('denies viewer to cancel tasks', () => {
+      expect(service.canCancelTask(viewer, { createdById: viewer.id })).toBe(false);
+    });
+  });
+
+  // --- canDeleteDocument ---
+
+  describe('canDeleteDocument', () => {
+    it('allows manager to delete any document', () => {
+      expect(service.canDeleteDocument(manager, { uploadedById: 'other-id' })).toBe(true);
+    });
+
+    it('allows admin to delete any document', () => {
+      expect(service.canDeleteDocument(admin, { uploadedById: 'other-id' })).toBe(true);
+    });
+
+    it('denies viewer to delete documents', () => {
+      expect(service.canDeleteDocument(viewer, { uploadedById: viewer.id })).toBe(false);
+    });
+  });
+
+  // --- assertCanEditTask ---
+
+  describe('assertCanEditTask', () => {
+    it('throws ForbiddenException when counsel has no access', () => {
+      expect(() =>
+        service.assertCanEditTask(counsel, {
+          ownerId: 'other-owner',
+          assigneeId: 'other-assignee',
+          createdById: 'other-creator',
+        }),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('does not throw when counsel is the creator', () => {
+      expect(() =>
+        service.assertCanEditTask(counsel, {
+          ownerId: 'other-owner',
+          assigneeId: 'other-assignee',
+          createdById: counsel.id,
+        }),
+      ).not.toThrow();
+    });
+  });
+
+  // --- assertCanCancelTask ---
+
+  describe('assertCanCancelTask', () => {
+    it('throws ForbiddenException when counsel is not the creator', () => {
+      expect(() =>
+        service.assertCanCancelTask(counsel, { createdById: 'other-creator' }),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('does not throw when admin cancels a task', () => {
+      expect(() =>
+        service.assertCanCancelTask(admin, { createdById: 'other-creator' }),
+      ).not.toThrow();
+    });
+
+    it('does not throw when counsel cancels own task', () => {
+      expect(() =>
+        service.assertCanCancelTask(counsel, { createdById: counsel.id }),
+      ).not.toThrow();
+    });
+  });
+
+  // --- assertCanDeleteDocument ---
+
+  describe('assertCanDeleteDocument', () => {
+    it('throws ForbiddenException when counsel tries to delete another users document', () => {
+      expect(() =>
+        service.assertCanDeleteDocument(counsel, { uploadedById: 'other-id' }),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('does not throw when counsel deletes own document', () => {
+      expect(() =>
+        service.assertCanDeleteDocument(counsel, { uploadedById: counsel.id }),
+      ).not.toThrow();
+    });
+
+    it('does not throw when manager deletes any document', () => {
+      expect(() =>
+        service.assertCanDeleteDocument(manager, { uploadedById: 'other-id' }),
+      ).not.toThrow();
+    });
+
+    it('throws ForbiddenException for viewer', () => {
+      expect(() =>
+        service.assertCanDeleteDocument(viewer, { uploadedById: viewer.id }),
+      ).toThrow(ForbiddenException);
+    });
   });
 });

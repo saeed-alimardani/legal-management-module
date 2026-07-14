@@ -274,6 +274,7 @@ model Task {
   noticeId    String?    @map("notice_id") @db.Uuid
   createdById String     @map("created_by_id") @db.Uuid
   completedAt DateTime?  @map("completed_at") @db.Timestamptz(6)
+  deletedAt   DateTime?  @map("deleted_at") @db.Timestamptz(6)
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -287,6 +288,7 @@ model Task {
   @@index([caseId])
   @@index([contractId])
   @@index([noticeId])
+  @@index([deletedAt])
   @@map("tasks")
 }
 
