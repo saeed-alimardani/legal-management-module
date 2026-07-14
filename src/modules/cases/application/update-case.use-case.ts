@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, EntityType } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { UpdateCaseInput } from '../domain/case.types';
 import { PrismaCaseRepository } from '../infrastructure/prisma-case.repository';
+import { getCaseResponseTimeZone, toCaseResponse } from './case.helpers';
 
 @Injectable()
 export class UpdateCaseUseCase {
@@ -13,6 +15,7 @@ export class UpdateCaseUseCase {
     private readonly caseRepository: PrismaCaseRepository,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(
@@ -31,8 +34,10 @@ export class UpdateCaseUseCase {
     const updated = await this.caseRepository.update(caseId, command);
     const changedFields = this.getChangedFields(existing, command);
 
+    const timeZone = getCaseResponseTimeZone(this.configService);
+
     if (changedFields.length === 0) {
-      return buildSingleResponse(updated);
+      return buildSingleResponse(toCaseResponse(updated, timeZone));
     }
 
     const statusChanged =
@@ -54,7 +59,7 @@ export class UpdateCaseUseCase {
           },
     });
 
-    return buildSingleResponse(updated);
+    return buildSingleResponse(toCaseResponse(updated, timeZone));
   }
 
   private getChangedFields(

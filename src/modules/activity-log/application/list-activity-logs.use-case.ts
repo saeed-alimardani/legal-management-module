@@ -166,6 +166,70 @@ export class ListActivityLogsUseCase {
         this.accessControl.assertCanView(user, { ownerId });
         return;
       }
+      case EntityType.DISCUSSION: {
+        const discussion = await this.prisma.discussion.findFirst({
+          where: { id: entityId, deletedAt: null },
+          include: {
+            legalCase: { select: { ownerId: true, deletedAt: true } },
+            contract: { select: { ownerId: true, deletedAt: true } },
+            notice: { select: { ownerId: true, deletedAt: true } },
+          },
+        });
+        if (!discussion) {
+          throw new NotFoundException('Entity not found');
+        }
+        const ownerId = this.resolveParentOwnerId(discussion);
+        if (!ownerId) {
+          throw new NotFoundException('Entity not found');
+        }
+        this.accessControl.assertCanView(user, { ownerId });
+        return;
+      }
+      case EntityType.FINANCIAL_RECORD: {
+        const financialRecord = await this.prisma.financialRecord.findFirst({
+          where: { id: entityId, deletedAt: null },
+          include: {
+            legalCase: { select: { ownerId: true, deletedAt: true } },
+            contract: { select: { ownerId: true, deletedAt: true } },
+          },
+        });
+        if (!financialRecord) {
+          throw new NotFoundException('Entity not found');
+        }
+        const ownerId =
+          this.resolveFinancialRecordParentOwnerId(financialRecord);
+        if (!ownerId) {
+          throw new NotFoundException('Entity not found');
+        }
+        this.accessControl.assertCanView(user, { ownerId });
+        return;
+      }
+      case EntityType.REMINDER: {
+        const reminder = await this.prisma.reminder.findUnique({
+          where: { id: entityId },
+          include: {
+            deadline: {
+              include: {
+                legalCase: { select: { ownerId: true, deletedAt: true } },
+                contract: { select: { ownerId: true, deletedAt: true } },
+                notice: { select: { ownerId: true, deletedAt: true } },
+              },
+            },
+          },
+        });
+        if (!reminder) {
+          throw new NotFoundException('Entity not found');
+        }
+        const ownerId = this.resolveParentOwnerId(reminder.deadline);
+        if (!ownerId) {
+          throw new NotFoundException('Entity not found');
+        }
+        this.accessControl.assertCanView(user, {
+          ownerId,
+          assigneeId: reminder.deadline.assigneeId,
+        });
+        return;
+      }
       default:
         throw new ForbiddenException(
           'You do not have access to this activity log',
@@ -186,6 +250,19 @@ export class ListActivityLogsUseCase {
     }
     if (entity.notice && entity.notice.deletedAt === null) {
       return entity.notice.ownerId;
+    }
+    return null;
+  }
+
+  private resolveFinancialRecordParentOwnerId(entity: {
+    legalCase?: { ownerId: string; deletedAt: Date | null } | null;
+    contract?: { ownerId: string; deletedAt: Date | null } | null;
+  }): string | null {
+    if (entity.legalCase && entity.legalCase.deletedAt === null) {
+      return entity.legalCase.ownerId;
+    }
+    if (entity.contract && entity.contract.deletedAt === null) {
+      return entity.contract.ownerId;
     }
     return null;
   }

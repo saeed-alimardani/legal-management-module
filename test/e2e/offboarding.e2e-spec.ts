@@ -4,13 +4,22 @@ import {
   AuditAction,
   CaseStatus,
   CaseType,
+  ContractStatus,
+  ContractType,
+  DeadlineStatus,
   EntityType,
+  NoticeStatus,
   Priority,
+  TaskStatus,
 } from '@prisma/client';
 import { authHeader, loginAs } from '../helpers/auth.helper';
 import { createTestApp } from '../helpers/app.helper';
 import {
   cleanupTestCases,
+  cleanupTestContracts,
+  cleanupTestDeadlines,
+  cleanupTestNotices,
+  cleanupTestTasks,
   disconnectTestPrisma,
   getTestPrisma,
   getUserIdByEmail,
@@ -30,6 +39,10 @@ describe('Offboarding (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await cleanupTestTasks();
+    await cleanupTestDeadlines();
+    await cleanupTestNotices();
+    await cleanupTestContracts();
     await cleanupTestCases();
     await seedTestUsers();
     counselId = await getUserIdByEmail('counsel@legal.local');
@@ -39,6 +52,10 @@ describe('Offboarding (e2e)', () => {
   });
 
   afterAll(async () => {
+    await cleanupTestTasks();
+    await cleanupTestDeadlines();
+    await cleanupTestNotices();
+    await cleanupTestContracts();
     await cleanupTestCases();
     await app.close();
     await disconnectTestPrisma();
@@ -127,5 +144,94 @@ describe('Offboarding (e2e)', () => {
         toUserId: counselId,
       })
       .expect(400);
+  });
+
+  it('transfers contracts, notices, tasks, and deadline assignees', async () => {
+    const prisma = getTestPrisma();
+
+    await createCounselCase('CASE-OFF-00003', 'Offboarding Case 3');
+
+    await prisma.contract.create({
+      data: {
+        referenceCode: 'CTR-OFF-00001',
+        title: 'Offboarding Contract',
+        type: ContractType.MSA,
+        status: ContractStatus.ACTIVE,
+        ownerId: counselId,
+        counterpartyName: 'Acme',
+      },
+    });
+
+    await prisma.legalNotice.create({
+      data: {
+        referenceCode: 'NTC-OFF-00001',
+        title: 'Offboarding Notice',
+        sender: 'Vendor',
+        receivedDate: new Date('2026-07-01T00:00:00.000Z'),
+        responseDeadline: new Date('2026-07-20T00:00:00.000Z'),
+        status: NoticeStatus.RECEIVED,
+        ownerId: counselId,
+      },
+    });
+
+    const legalCase = await prisma.legalCase.findFirstOrThrow({
+      where: { referenceCode: 'CASE-OFF-00003' },
+    });
+
+    await prisma.task.create({
+      data: {
+        title: 'Offboarding Task',
+        status: TaskStatus.TODO,
+        assigneeId: counselId,
+        caseId: legalCase.id,
+        createdById: counselId,
+      },
+    });
+
+    await prisma.deadline.create({
+      data: {
+        title: 'Offboarding Deadline',
+        dueDate: new Date('2026-08-01T00:00:00.000Z'),
+        status: DeadlineStatus.PENDING,
+        caseId: legalCase.id,
+        assigneeId: counselId,
+        createdById: counselId,
+      },
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/offboarding/transfer')
+      .set(authHeader(adminToken))
+      .send({
+        fromUserId: counselId,
+        toUserId: counsel2Id,
+      })
+      .expect(200);
+
+    expect(response.body.data).toEqual({
+      cases: 1,
+      contracts: 1,
+      notices: 1,
+      tasks: 1,
+      deadlines: 1,
+    });
+
+    const contract = await prisma.contract.findFirst({
+      where: { referenceCode: 'CTR-OFF-00001' },
+    });
+    const notice = await prisma.legalNotice.findFirst({
+      where: { referenceCode: 'NTC-OFF-00001' },
+    });
+    const task = await prisma.task.findFirst({
+      where: { title: 'Offboarding Task' },
+    });
+    const deadline = await prisma.deadline.findFirst({
+      where: { title: 'Offboarding Deadline' },
+    });
+
+    expect(contract?.ownerId).toBe(counsel2Id);
+    expect(notice?.ownerId).toBe(counsel2Id);
+    expect(task?.assigneeId).toBe(counsel2Id);
+    expect(deadline?.assigneeId).toBe(counsel2Id);
   });
 });

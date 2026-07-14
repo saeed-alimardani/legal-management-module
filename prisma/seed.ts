@@ -7,10 +7,13 @@ import {
   DeadlineStatus,
   DocumentType,
   EntityType,
+  FinancialRecordType,
   NoticeStatus,
   PartyType,
+  Prisma,
   PrismaClient,
   Priority,
+  ReminderStatus,
   TaskStatus,
   UserRole,
 } from '@prisma/client';
@@ -732,6 +735,126 @@ async function seedActivityLogs(
   await prisma.activityLog.createMany({ data: logs });
 }
 
+async function seedDiscussions(
+  userIds: Map<string, string>,
+  caseIds: Map<string, string>,
+  contractIds: Map<string, string>,
+  noticeIds: Map<string, string>,
+): Promise<void> {
+  const counselId = userIds.get('counsel@legal.local')!;
+  const managerId = userIds.get('manager@legal.local')!;
+
+  const discussions = [
+    {
+      content: 'Initial review completed. Awaiting vendor response on delivery terms.',
+      authorId: counselId,
+      caseId: caseIds.get('CASE-2026-00001')!,
+    },
+    {
+      content: 'Contract renewal should be prioritized before Q3.',
+      authorId: managerId,
+      contractId: contractIds.get('CTR-2026-00001')!,
+    },
+    {
+      content: 'Regulatory notice requires legal sign-off by end of week.',
+      authorId: counselId,
+      noticeId: noticeIds.get('NTC-2026-00001')!,
+    },
+  ];
+
+  for (const discussion of discussions) {
+    const existing = await prisma.discussion.findFirst({
+      where: {
+        content: discussion.content,
+        authorId: discussion.authorId,
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      await prisma.discussion.create({ data: discussion });
+    }
+  }
+}
+
+async function seedFinancialRecords(
+  userIds: Map<string, string>,
+  caseIds: Map<string, string>,
+  contractIds: Map<string, string>,
+): Promise<void> {
+  const managerId = userIds.get('manager@legal.local')!;
+  const caseId = caseIds.get('CASE-2026-00001')!;
+  const contractId = contractIds.get('CTR-2026-00001')!;
+
+  const records = [
+    {
+      title: 'Litigation counsel fees',
+      amount: new Prisma.Decimal('15000000.00'),
+      currency: 'IRR',
+      type: FinancialRecordType.EXPENSE,
+      description: 'External counsel retainer for vendor dispute',
+      recordDate: toUtcDateOnly(new Date('2026-02-15')),
+      caseId,
+      createdById: managerId,
+    },
+    {
+      title: 'MSA annual license payment',
+      amount: new Prisma.Decimal('8500000.00'),
+      currency: 'IRR',
+      type: FinancialRecordType.PAYMENT,
+      description: 'Annual platform license under MSA',
+      recordDate: toUtcDateOnly(new Date('2026-01-20')),
+      contractId,
+      createdById: managerId,
+    },
+  ];
+
+  for (const record of records) {
+    const existing = await prisma.financialRecord.findFirst({
+      where: { title: record.title, createdById: record.createdById },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      await prisma.financialRecord.create({ data: record });
+    }
+  }
+}
+
+async function seedReminders(userIds: Map<string, string>): Promise<void> {
+  const adminId = userIds.get('admin@legal.local')!;
+  const pendingDeadlines = await prisma.deadline.findMany({
+    where: { status: DeadlineStatus.PENDING },
+    select: { id: true, dueDate: true, title: true },
+    take: 5,
+  });
+
+  for (const deadline of pendingDeadlines) {
+    const existing = await prisma.reminder.findFirst({
+      where: { deadlineId: deadline.id },
+      select: { id: true },
+    });
+
+    if (existing) {
+      continue;
+    }
+
+    const remindAt = new Date(deadline.dueDate);
+    remindAt.setUTCDate(remindAt.getUTCDate() - 1);
+    remindAt.setUTCHours(5, 30, 0, 0);
+
+    await prisma.reminder.create({
+      data: {
+        deadlineId: deadline.id,
+        remindAt,
+        status: ReminderStatus.PENDING,
+        message: `Reminder: ${deadline.title}`,
+        createdById: adminId,
+      },
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
   const userIds = await seedUsersData(passwordHash);
@@ -752,6 +875,9 @@ async function main(): Promise<void> {
   const noticeIds = await seedDeadlinesAndNotices(userIds, caseIds, contractIds);
   await seedTasks(userIds, caseIds, contractIds, noticeIds);
   await seedDocuments(userIds, caseIds, contractIds, noticeIds);
+  await seedDiscussions(userIds, caseIds, contractIds, noticeIds);
+  await seedFinancialRecords(userIds, caseIds, contractIds);
+  await seedReminders(userIds);
   await seedActivityLogs(userIds, caseIds, contractIds, noticeIds);
 
   const partyCount = seedCases.reduce(
@@ -763,7 +889,7 @@ async function main(): Promise<void> {
   console.log(`Seeded ${seedCases.length} cases with ${partyCount} parties`);
   console.log(`Seeded ${contractIds.size} contracts`);
   console.log(`Seeded ${noticeIds.size} notices with linked deadlines`);
-  console.log('Seeded standalone deadlines, tasks, documents, and activity logs');
+  console.log('Seeded standalone deadlines, tasks, documents, discussions, financial records, reminders, and activity logs');
 }
 
 main()

@@ -1,9 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { PrismaDocumentRepository } from '../infrastructure/prisma-document.repository';
-import { countParentRefs, toDocumentResponse } from './document.helpers';
+import {
+  countParentRefs,
+  getDocumentResponseTimeZone,
+  toDocumentResponse,
+} from './document.helpers';
 
 export interface ListDocumentsCommand {
   caseId?: string;
@@ -16,6 +21,7 @@ export class ListDocumentsUseCase {
   constructor(
     private readonly documentRepository: PrismaDocumentRepository,
     private readonly accessControl: AccessControlService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: ListDocumentsCommand) {
@@ -35,6 +41,9 @@ export class ListDocumentsUseCase {
       scope,
     );
 
-    return buildSingleResponse(items.map(toDocumentResponse));
+    const timeZone = getDocumentResponseTimeZone(this.configService);
+    return buildSingleResponse(
+      items.map((document) => toDocumentResponse(document, timeZone)),
+    );
   }
 }

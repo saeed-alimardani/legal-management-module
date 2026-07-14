@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
   AuditAction,
@@ -12,6 +13,7 @@ import { PrismaCaseRepository } from '../../../src/modules/cases/infrastructure/
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
+import { createMockConfigService } from '../../helpers/config.helper';
 
 describe('UpdateCaseUseCase', () => {
   let useCase: UpdateCaseUseCase;
@@ -70,6 +72,7 @@ describe('UpdateCaseUseCase', () => {
       caseRepository as unknown as PrismaCaseRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
+      createMockConfigService() as unknown as ConfigService,
     );
   });
 

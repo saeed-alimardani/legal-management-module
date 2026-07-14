@@ -35,6 +35,7 @@ describe('CreateNoticeUseCase', () => {
   let tx: {
     legalNotice: { create: jest.Mock };
     deadline: { create: jest.Mock };
+    reminder: { create: jest.Mock };
   };
   let activityLogService: jest.Mocked<
     Pick<ActivityLogService, 'logWithinTransaction'>
@@ -103,6 +104,12 @@ describe('CreateNoticeUseCase', () => {
       deadline: {
         create: jest.fn().mockResolvedValue(createdDeadline),
       },
+      reminder: {
+        create: jest.fn().mockResolvedValue({
+          id: 'reminder-1',
+          deadlineId: 'deadline-1',
+        }),
+      },
     };
 
     prisma = {
@@ -153,6 +160,13 @@ describe('CreateNoticeUseCase', () => {
         status: DeadlineStatus.PENDING,
         assigneeId: counsel.id,
         noticeId: createdNotice.id,
+        createdById: counsel.id,
+      }),
+    });
+
+    expect(tx.reminder.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        deadlineId: createdDeadline.id,
         createdById: counsel.id,
       }),
     });

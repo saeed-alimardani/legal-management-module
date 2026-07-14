@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { RolesGuard } from '../../shared/guards/roles.guard';
+import { RemindersModule } from '../reminders/reminders.module';
 import { CreateDeadlineUseCase } from './application/create-deadline.use-case';
 import { DeleteDeadlineUseCase } from './application/delete-deadline.use-case';
 import { GetDeadlineUseCase } from './application/get-deadline.use-case';
@@ -9,6 +10,7 @@ import { PrismaDeadlineRepository } from './infrastructure/prisma-deadline.repos
 import { DeadlinesController } from './presentation/deadlines.controller';
 
 @Module({
+  imports: [forwardRef(() => RemindersModule)],
   controllers: [DeadlinesController],
   providers: [
     RolesGuard,

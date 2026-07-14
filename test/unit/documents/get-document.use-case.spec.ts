@@ -1,4 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentType, UserRole } from '@prisma/client';
 import { GetDocumentUseCase } from '../../../src/modules/documents/application/get-document.use-case';
 import { DocumentWithParent } from '../../../src/modules/documents/domain/document.types';
@@ -11,6 +12,7 @@ describe('GetDocumentUseCase', () => {
   let documentRepository: jest.Mocked<
     Pick<PrismaDocumentRepository, 'findById'>
   >;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -59,9 +61,14 @@ describe('GetDocumentUseCase', () => {
       findById: jest.fn().mockResolvedValue(existingDocument),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new GetDocumentUseCase(
       documentRepository as unknown as PrismaDocumentRepository,
       new AccessControlService(),
+      configService as unknown as ConfigService,
     );
   });
 

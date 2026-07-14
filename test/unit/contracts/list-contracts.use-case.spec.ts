@@ -1,5 +1,7 @@
+import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
 import { ListContractsUseCase } from '../../../src/modules/contracts/application/list-contracts.use-case';
+import { toContractResponse } from '../../../src/modules/contracts/application/contract.helpers';
 import { PrismaContractRepository } from '../../../src/modules/contracts/infrastructure/prisma-contract.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
@@ -7,6 +9,24 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('ListContractsUseCase', () => {
   let useCase: ListContractsUseCase;
   let contractRepository: jest.Mocked<Pick<PrismaContractRepository, 'list'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
+
+  const listItem = {
+    id: 'contract-1',
+    referenceCode: 'CTR-2026-00001',
+    title: 'Listed Contract',
+    type: 'MSA' as never,
+    status: 'ACTIVE' as never,
+    ownerId: 'owner-1',
+    counterpartyName: 'Acme',
+    effectiveDate: null,
+    expirationDate: null,
+    renewalDate: null,
+    keyTerms: null,
+    deletedAt: null,
+    createdAt: new Date('2026-07-14T10:00:00.000Z'),
+    updatedAt: new Date('2026-07-14T10:00:00.000Z'),
+  };
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -32,14 +52,19 @@ describe('ListContractsUseCase', () => {
   beforeEach(() => {
     contractRepository = {
       list: jest.fn().mockResolvedValue({
-        items: [{ id: 'contract-1' }],
+        items: [listItem],
         total: 1,
       }),
+    };
+
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
     };
 
     useCase = new ListContractsUseCase(
       contractRepository as unknown as PrismaContractRepository,
       new AccessControlService(),
+      configService as unknown as ConfigService,
     );
   });
 
@@ -70,7 +95,7 @@ describe('ListContractsUseCase', () => {
     const result = await useCase.execute(admin, { page: 2, limit: 5 });
 
     expect(result).toEqual({
-      data: [{ id: 'contract-1' }],
+      data: [toContractResponse(listItem, 'Asia/Tehran')],
       meta: { page: 2, limit: 5, total: 1 },
     });
   });

@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentType, UserRole } from '@prisma/client';
 import { ListDocumentsUseCase } from '../../../src/modules/documents/application/list-documents.use-case';
+import { toDocumentResponse } from '../../../src/modules/documents/application/document.helpers';
 import { DocumentWithParent } from '../../../src/modules/documents/domain/document.types';
 import { PrismaDocumentRepository } from '../../../src/modules/documents/infrastructure/prisma-document.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
@@ -9,6 +11,7 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('ListDocumentsUseCase', () => {
   let useCase: ListDocumentsUseCase;
   let documentRepository: jest.Mocked<Pick<PrismaDocumentRepository, 'list'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -57,9 +60,14 @@ describe('ListDocumentsUseCase', () => {
       list: jest.fn().mockResolvedValue([docWithParent]),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new ListDocumentsUseCase(
       documentRepository as unknown as PrismaDocumentRepository,
       new AccessControlService(),
+      configService as unknown as ConfigService,
     );
   });
 
@@ -147,19 +155,8 @@ describe('ListDocumentsUseCase', () => {
   it('maps all fields correctly in toDocumentResponse', async () => {
     const result = await useCase.execute(counsel, { caseId: 'case-1' });
 
-    expect(result.data[0]).toEqual({
-      id: 'doc-1',
-      fileName: 'contract.pdf',
-      mimeType: 'application/pdf',
-      fileSize: 1024,
-      storageKey: 'uploads/uuid-1.pdf',
-      documentType: DocumentType.CONTRACT,
-      description: 'Signed agreement',
-      uploadedById: counsel.id,
-      caseId: 'case-1',
-      contractId: null,
-      noticeId: null,
-      uploadedAt,
-    });
+    expect(result.data[0]).toEqual(
+      toDocumentResponse(docWithParent, 'Asia/Tehran'),
+    );
   });
 });

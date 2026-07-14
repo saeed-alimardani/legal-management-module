@@ -4,12 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuditAction, CaseStatus, EntityType } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { CreateCaseInput } from '../domain/case.types';
 import { PrismaCaseRepository } from '../infrastructure/prisma-case.repository';
+import { getCaseResponseTimeZone, toCaseResponse } from './case.helpers';
 
 export interface CreateCaseCommand {
   title: string;
@@ -29,6 +31,7 @@ export class CreateCaseUseCase {
     private readonly caseRepository: PrismaCaseRepository,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateCaseCommand) {
@@ -62,7 +65,9 @@ export class CreateCaseUseCase {
       },
     });
 
-    return buildSingleResponse(legalCase);
+    return buildSingleResponse(
+      toCaseResponse(legalCase, getCaseResponseTimeZone(this.configService)),
+    );
   }
 
   private async resolveOwnerId(

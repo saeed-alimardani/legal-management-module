@@ -4,6 +4,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   AuditAction,
   DocumentType,
@@ -26,6 +27,7 @@ describe('UploadDocumentUseCase', () => {
   >;
   let fileStorage: jest.Mocked<Pick<FileStoragePort, 'save' | 'read'>>;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -101,11 +103,16 @@ describe('UploadDocumentUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new UploadDocumentUseCase(
       documentRepository as unknown as PrismaDocumentRepository,
       fileStorage as unknown as FileStoragePort,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
+      configService as unknown as ConfigService,
     );
   });
 

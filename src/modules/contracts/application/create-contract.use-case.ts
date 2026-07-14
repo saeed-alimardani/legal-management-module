@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuditAction, ContractStatus, EntityType } from '@prisma/client';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
@@ -12,6 +13,10 @@ import { toUtcDateOnly } from '../../../shared/utils/date-boundary.util';
 import { isValidContractDateRange } from '../domain/contract-date.rules';
 import { CreateContractInput } from '../domain/contract.types';
 import { PrismaContractRepository } from '../infrastructure/prisma-contract.repository';
+import {
+  getContractResponseTimeZone,
+  toContractResponse,
+} from './contract.helpers';
 
 export interface CreateContractCommand {
   title: string;
@@ -31,6 +36,7 @@ export class CreateContractUseCase {
     private readonly contractRepository: PrismaContractRepository,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateContractCommand) {
@@ -81,7 +87,12 @@ export class CreateContractUseCase {
       },
     });
 
-    return buildSingleResponse(contract);
+    return buildSingleResponse(
+      toContractResponse(
+        contract,
+        getContractResponseTimeZone(this.configService),
+      ),
+    );
   }
 
   private async resolveOwnerId(

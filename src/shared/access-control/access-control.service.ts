@@ -16,6 +16,10 @@ export interface DocumentResource {
   uploadedById: string;
 }
 
+export interface DiscussionResource {
+  authorId: string;
+}
+
 @Injectable()
 export class AccessControlService {
   isAdminOrManager(user: AuthenticatedUser): boolean {
@@ -96,6 +100,17 @@ export class AccessControlService {
 
   /** List filter for owner-based entities (cases, contracts, notices). */
   buildOwnerListFilter(user: AuthenticatedUser): { ownerId?: string } {
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return { ownerId: user.id };
+    }
+
+    return {};
+  }
+
+  /** Counsel sees financial records on cases/contracts they own. */
+  buildFinancialRecordListFilter(user: AuthenticatedUser): {
+    ownerId?: string;
+  } {
     if (user.role === UserRole.LEGAL_COUNSEL) {
       return { ownerId: user.id };
     }
@@ -252,6 +267,47 @@ export class AccessControlService {
     if (!this.canDeleteDocument(user, resource)) {
       throw new ForbiddenException(
         'You do not have permission to delete this document',
+      );
+    }
+  }
+
+  /**
+   * Counsel may see discussions on matters they own.
+   * Admin/Manager/Viewer → no extra filter.
+   */
+  buildDiscussionListFilter(user: AuthenticatedUser): {
+    counselUserId?: string;
+  } {
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return { counselUserId: user.id };
+    }
+
+    return {};
+  }
+
+  /** Admin/Manager or author may update or delete. */
+  canEditDiscussion(
+    user: AuthenticatedUser,
+    resource: Pick<DiscussionResource, 'authorId'>,
+  ): boolean {
+    if (this.isAdminOrManager(user)) {
+      return true;
+    }
+
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return resource.authorId === user.id;
+    }
+
+    return false;
+  }
+
+  assertCanEditDiscussion(
+    user: AuthenticatedUser,
+    resource: Pick<DiscussionResource, 'authorId'>,
+  ): void {
+    if (!this.canEditDiscussion(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to edit this discussion',
       );
     }
   }

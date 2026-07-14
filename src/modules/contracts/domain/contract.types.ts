@@ -17,6 +17,14 @@ export interface ContractEntity {
   updatedAt: Date;
 }
 
+export type ContractResponse = Omit<ContractEntity, 'deletedAt'> & {
+  effectiveDatePersian: string | null;
+  expirationDatePersian: string | null;
+  renewalDatePersian: string | null;
+  createdAtPersian: string;
+  updatedAtPersian: string;
+};
+
 export interface CreateContractInput {
   referenceCode: string;
   title: string;

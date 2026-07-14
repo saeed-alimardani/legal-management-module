@@ -26,6 +26,20 @@ export interface LegalCaseEntity {
   parties?: CasePartyEntity[];
 }
 
+export type CaseResponse = Omit<LegalCaseEntity, 'deletedAt'> & {
+  openedDatePersian: string | null;
+  closedDatePersian: string | null;
+  createdAtPersian: string;
+  updatedAtPersian: string;
+};
+
+export interface UpdateCasePartyInput {
+  name?: string;
+  partyType?: PartyType;
+  contactInfo?: string | null;
+  notes?: string | null;
+}
+
 export interface CreateCasePartyInput {
   name: string;
   partyType: PartyType;

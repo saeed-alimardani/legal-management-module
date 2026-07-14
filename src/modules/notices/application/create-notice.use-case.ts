@@ -17,6 +17,7 @@ import { ActivityLogService } from '../../../shared/activity-log/activity-log.se
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { toUtcDateOnly } from '../../../shared/utils/date-boundary.util';
+import { createDefaultReminder } from '../../reminders/application/reminder.helpers';
 import { CreateNoticeInput } from '../domain/notice.types';
 import { PrismaNoticeRepository } from '../infrastructure/prisma-notice.repository';
 import {
@@ -69,6 +70,10 @@ export class CreateNoticeUseCase {
     const referenceCode =
       await this.noticeRepository.generateNextReferenceCode();
     const status = command.status ?? NoticeStatus.RECEIVED;
+
+    const timeZone = resolveNoticeResponseTimeZone(
+      this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),
+    );
 
     const notice = await this.prisma.$transaction(async (tx) => {
       const created = await tx.legalNotice.create({
@@ -123,12 +128,18 @@ export class CreateNoticeUseCase {
         },
       });
 
+      await tx.reminder.create({
+        data: createDefaultReminder(
+          deadline.id,
+          responseDeadline,
+          ownerId,
+          user.id,
+          timeZone,
+        ),
+      });
+
       return created;
     });
-
-    const timeZone = resolveNoticeResponseTimeZone(
-      this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),
-    );
 
     return buildSingleResponse(toNoticeResponse(notice, timeZone));
   }

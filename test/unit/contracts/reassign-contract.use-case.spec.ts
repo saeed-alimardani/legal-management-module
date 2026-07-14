@@ -1,4 +1,5 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   AuditAction,
   ContractStatus,
@@ -21,6 +22,7 @@ describe('ReassignContractUseCase', () => {
     >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const manager: AuthenticatedUser = {
     id: 'manager-id',
@@ -69,10 +71,15 @@ describe('ReassignContractUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new ReassignContractUseCase(
       contractRepository as unknown as PrismaContractRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
+      configService as unknown as ConfigService,
     );
   });
 

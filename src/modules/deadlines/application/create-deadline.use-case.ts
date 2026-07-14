@@ -11,6 +11,8 @@ import { ActivityLogService } from '../../../shared/activity-log/activity-log.se
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { toUtcDateOnly } from '../../../shared/utils/date-boundary.util';
+import { createDefaultReminder } from '../../reminders/application/reminder.helpers';
+import { PrismaReminderRepository } from '../../reminders/infrastructure/prisma-reminder.repository';
 import { PrismaDeadlineRepository } from '../infrastructure/prisma-deadline.repository';
 import {
   countParentRefs,
@@ -32,6 +34,7 @@ export interface CreateDeadlineCommand {
 export class CreateDeadlineUseCase {
   constructor(
     private readonly deadlineRepository: PrismaDeadlineRepository,
+    private readonly reminderRepository: PrismaReminderRepository,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
     private readonly configService: ConfigService,
@@ -97,6 +100,16 @@ export class CreateDeadlineUseCase {
 
     const timeZone = resolveResponseTimeZone(
       this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),
+    );
+
+    await this.reminderRepository.create(
+      createDefaultReminder(
+        deadline.id,
+        deadline.dueDate,
+        deadline.assigneeId,
+        user.id,
+        timeZone,
+      ),
     );
 
     return buildSingleResponse(toDeadlineResponse(deadline, timeZone));

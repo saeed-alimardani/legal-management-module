@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import {
   BadRequestException,
   ForbiddenException,
@@ -17,6 +18,7 @@ import { PrismaCaseRepository } from '../../../src/modules/cases/infrastructure/
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
+import { createMockConfigService } from '../../helpers/config.helper';
 
 describe('CreateCaseUseCase', () => {
   let useCase: CreateCaseUseCase;
@@ -84,6 +86,7 @@ describe('CreateCaseUseCase', () => {
       caseRepository as unknown as PrismaCaseRepository,
       accessControl,
       activityLogService as unknown as ActivityLogService,
+      createMockConfigService() as unknown as ConfigService,
     );
   });
 
@@ -94,7 +97,10 @@ describe('CreateCaseUseCase', () => {
       priority: Priority.HIGH,
     });
 
-    expect(result.data).toEqual(createdCase);
+    expect(result.data.id).toBe(createdCase.id);
+    expect(result.data.createdAtPersian).toMatch(
+      /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/,
+    );
     expect(caseRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         ownerId: counsel.id,

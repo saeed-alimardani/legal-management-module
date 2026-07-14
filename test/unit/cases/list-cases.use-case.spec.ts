@@ -1,8 +1,10 @@
+import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
 import { ListCasesUseCase } from '../../../src/modules/cases/application/list-cases.use-case';
 import { PrismaCaseRepository } from '../../../src/modules/cases/infrastructure/prisma-case.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
+import { createMockConfigService } from '../../helpers/config.helper';
 
 describe('ListCasesUseCase', () => {
   let useCase: ListCasesUseCase;
@@ -33,6 +35,7 @@ describe('ListCasesUseCase', () => {
     useCase = new ListCasesUseCase(
       caseRepository as unknown as PrismaCaseRepository,
       new AccessControlService(),
+      createMockConfigService() as unknown as ConfigService,
     );
   });
 
@@ -57,10 +60,11 @@ describe('ListCasesUseCase', () => {
   it('returns paginated response shape', async () => {
     const result = await useCase.execute(admin, { page: 2, limit: 5 });
 
-    expect(result).toEqual({
-      data: [{ id: 'case-1' }],
-      meta: { page: 2, limit: 5, total: 1 },
-    });
+    expect(result.meta).toEqual({ page: 2, limit: 5, total: 1 });
+    expect(result.data[0].id).toBe('case-1');
+    expect(result.data[0].createdAtPersian).toMatch(
+      /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/,
+    );
   });
 
   it('passes filters to repository', async () => {

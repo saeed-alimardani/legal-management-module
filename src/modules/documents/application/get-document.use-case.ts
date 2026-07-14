@@ -1,15 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { PrismaDocumentRepository } from '../infrastructure/prisma-document.repository';
-import { resolveParentOwnerId, toDocumentResponse } from './document.helpers';
+import {
+  getDocumentResponseTimeZone,
+  resolveParentOwnerId,
+  toDocumentResponse,
+} from './document.helpers';
 
 @Injectable()
 export class GetDocumentUseCase {
   constructor(
     private readonly documentRepository: PrismaDocumentRepository,
     private readonly accessControl: AccessControlService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, documentId: string) {
@@ -27,6 +33,7 @@ export class GetDocumentUseCase {
 
     this.accessControl.assertCanView(user, { ownerId: parentOwnerId });
 
-    return buildSingleResponse(toDocumentResponse(document));
+    const timeZone = getDocumentResponseTimeZone(this.configService);
+    return buildSingleResponse(toDocumentResponse(document, timeZone));
   }
 }

@@ -202,6 +202,10 @@ describe('PrismaNoticeRepository (integration)', () => {
     expect(filtered.total).toBe(1);
     expect(filtered.items[0].title).toBe('Overdue');
 
+    const found = await repository.findById(received.id);
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe(received.id);
+
     const reassigned = await repository.reassign(received.id, secondOwnerId);
     expect(reassigned.ownerId).toBe(secondOwnerId);
   });

@@ -170,6 +170,41 @@ export class PrismaCaseRepository {
     });
   }
 
+  async findPartyById(caseId: string, partyId: string) {
+    return this.prisma.caseParty.findFirst({
+      where: { id: partyId, caseId },
+    });
+  }
+
+  async updateParty(
+    caseId: string,
+    partyId: string,
+    input: {
+      name?: string;
+      partyType?: CreateCasePartyInput['partyType'];
+      contactInfo?: string | null;
+      notes?: string | null;
+    },
+  ) {
+    return this.prisma.caseParty.update({
+      where: { id: partyId },
+      data: {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.partyType !== undefined ? { partyType: input.partyType } : {}),
+        ...(input.contactInfo !== undefined
+          ? { contactInfo: input.contactInfo }
+          : {}),
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
+      },
+    });
+  }
+
+  async deleteParty(caseId: string, partyId: string) {
+    return this.prisma.caseParty.delete({
+      where: { id: partyId },
+    });
+  }
+
   async userExistsAndActive(userId: string): Promise<boolean> {
     const user = await this.prisma.user.findFirst({
       where: {

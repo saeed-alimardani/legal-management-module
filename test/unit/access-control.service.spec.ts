@@ -151,6 +151,24 @@ describe('AccessControlService', () => {
     });
   });
 
+  // --- buildFinancialRecordListFilter ---
+
+  describe('buildFinancialRecordListFilter', () => {
+    it('scopes counsel financial record list to ownerId', () => {
+      expect(service.buildFinancialRecordListFilter(counsel)).toEqual({
+        ownerId: counsel.id,
+      });
+    });
+
+    it('does not scope admin financial record list', () => {
+      expect(service.buildFinancialRecordListFilter(admin)).toEqual({});
+    });
+
+    it('does not scope viewer financial record list', () => {
+      expect(service.buildFinancialRecordListFilter(viewer)).toEqual({});
+    });
+  });
+
   // --- buildDocumentListFilter ---
 
   describe('buildDocumentListFilter', () => {
@@ -253,6 +271,58 @@ describe('AccessControlService', () => {
     it('denies viewer to delete documents', () => {
       expect(
         service.canDeleteDocument(viewer, { uploadedById: viewer.id }),
+      ).toBe(false);
+    });
+  });
+
+  // --- buildDiscussionListFilter ---
+
+  describe('buildDiscussionListFilter', () => {
+    it('scopes counsel discussion list to counselUserId', () => {
+      expect(service.buildDiscussionListFilter(counsel)).toEqual({
+        counselUserId: counsel.id,
+      });
+    });
+
+    it('does not scope admin discussion list', () => {
+      expect(service.buildDiscussionListFilter(admin)).toEqual({});
+    });
+
+    it('does not scope viewer discussion list', () => {
+      expect(service.buildDiscussionListFilter(viewer)).toEqual({});
+    });
+  });
+
+  // --- canEditDiscussion ---
+
+  describe('canEditDiscussion', () => {
+    it('allows manager to edit any discussion', () => {
+      expect(
+        service.canEditDiscussion(manager, { authorId: 'other-id' }),
+      ).toBe(true);
+    });
+
+    it('allows admin to edit any discussion', () => {
+      expect(
+        service.canEditDiscussion(admin, { authorId: 'other-id' }),
+      ).toBe(true);
+    });
+
+    it('allows counsel to edit own discussion', () => {
+      expect(
+        service.canEditDiscussion(counsel, { authorId: counsel.id }),
+      ).toBe(true);
+    });
+
+    it('denies counsel to edit another authors discussion', () => {
+      expect(
+        service.canEditDiscussion(counsel, { authorId: 'other-id' }),
+      ).toBe(false);
+    });
+
+    it('denies viewer to edit discussions', () => {
+      expect(
+        service.canEditDiscussion(viewer, { authorId: viewer.id }),
       ).toBe(false);
     });
   });

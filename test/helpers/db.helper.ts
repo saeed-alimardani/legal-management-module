@@ -119,6 +119,24 @@ export async function cleanupTestTasks(): Promise<void> {
   await client.task.deleteMany();
 }
 
+async function deleteRemindersForDeadlines(
+  client: PrismaClient,
+  where?: { caseId?: { not: null }; contractId?: { not: null }; noticeId?: { not: null } },
+): Promise<void> {
+  const deadlines = await client.deadline.findMany({
+    where,
+    select: { id: true },
+  });
+
+  if (deadlines.length === 0) {
+    return;
+  }
+
+  await client.reminder.deleteMany({
+    where: { deadlineId: { in: deadlines.map((d) => d.id) } },
+  });
+}
+
 export async function cleanupTestDocuments(): Promise<void> {
   const client = getTestPrisma();
   await client.activityLog.deleteMany({
@@ -127,11 +145,51 @@ export async function cleanupTestDocuments(): Promise<void> {
   await client.document.deleteMany();
 }
 
+export async function cleanupTestDiscussions(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'DISCUSSION' },
+  });
+  await client.discussion.deleteMany();
+}
+
+export async function cleanupTestFinancialRecords(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'FINANCIAL_RECORD' },
+  });
+  await client.financialRecord.deleteMany();
+}
+
+export async function cleanupTestReminders(): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'REMINDER' },
+  });
+  await client.reminder.deleteMany();
+}
+
+export async function cleanupTestUsers(extraEmails: string[] = []): Promise<void> {
+  const client = getTestPrisma();
+  await client.activityLog.deleteMany({
+    where: { entityType: 'USER' },
+  });
+
+  if (extraEmails.length > 0) {
+    await client.user.deleteMany({
+      where: { email: { in: extraEmails } },
+    });
+  }
+}
+
 export async function cleanupTestCases(): Promise<void> {
   const client = getTestPrisma();
   await client.activityLog.deleteMany({
     where: { entityType: 'CASE' },
   });
+  await cleanupTestDiscussions();
+  await cleanupTestFinancialRecords();
+  await deleteRemindersForDeadlines(client, { caseId: { not: null } });
   // Delete children first — ON DELETE SET NULL would violate single-parent CHECK
   await client.deadline.deleteMany({
     where: { caseId: { not: null } },
@@ -139,9 +197,8 @@ export async function cleanupTestCases(): Promise<void> {
   await client.task.deleteMany({
     where: { caseId: { not: null } },
   });
-  await client.document.deleteMany({
-    where: { caseId: { not: null } },
-  });
+  // Remove all documents before deleting cases (SET NULL would break single-parent CHECK)
+  await client.document.deleteMany();
   await client.legalNotice.updateMany({
     where: { relatedCaseId: { not: null } },
     data: { relatedCaseId: null },
@@ -155,6 +212,7 @@ export async function cleanupTestDeadlines(): Promise<void> {
   await client.activityLog.deleteMany({
     where: { entityType: 'DEADLINE' },
   });
+  await cleanupTestReminders();
   await client.deadline.deleteMany();
 }
 
@@ -163,6 +221,13 @@ export async function cleanupTestContracts(): Promise<void> {
   await client.activityLog.deleteMany({
     where: { entityType: 'CONTRACT' },
   });
+  await client.discussion.deleteMany({
+    where: { contractId: { not: null } },
+  });
+  await client.financialRecord.deleteMany({
+    where: { contractId: { not: null } },
+  });
+  await deleteRemindersForDeadlines(client, { contractId: { not: null } });
   await client.deadline.deleteMany({
     where: { contractId: { not: null } },
   });
@@ -186,6 +251,10 @@ export async function cleanupTestNotices(): Promise<void> {
       OR: [{ entityType: 'NOTICE' }, { entityType: 'DEADLINE' }],
     },
   });
+  await client.discussion.deleteMany({
+    where: { noticeId: { not: null } },
+  });
+  await deleteRemindersForDeadlines(client, { noticeId: { not: null } });
   await client.deadline.deleteMany({
     where: { noticeId: { not: null } },
   });

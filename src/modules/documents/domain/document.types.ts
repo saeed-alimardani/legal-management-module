@@ -22,7 +22,9 @@ export interface DocumentWithParent extends DocumentEntity {
   notice?: { ownerId: string; deletedAt: Date | null } | null;
 }
 
-export type DocumentResponse = Omit<DocumentEntity, 'deletedAt'>;
+export type DocumentResponse = Omit<DocumentEntity, 'deletedAt'> & {
+  uploadedAtPersian: string;
+};
 
 export interface CreateDocumentInput {
   fileName: string;

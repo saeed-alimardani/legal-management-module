@@ -1,6 +1,23 @@
+import { ConfigService } from '@nestjs/config';
+import { CONFIG_KEYS } from '../../../config/constants';
+import {
+  toPersianDateString,
+  toPersianDateTimeString,
+} from '../../../shared/utils/persian-date.util';
 import { DocumentEntity, DocumentResponse } from '../domain/document.types';
 
-export function toDocumentResponse(document: DocumentEntity): DocumentResponse {
+const DEFAULT_TIMEZONE = 'Asia/Tehran';
+
+export function resolveDocumentResponseTimeZone(timeZone?: string): string {
+  return timeZone || DEFAULT_TIMEZONE;
+}
+
+export function toDocumentResponse(
+  document: DocumentEntity,
+  timeZone: string = DEFAULT_TIMEZONE,
+): DocumentResponse {
+  const zone = resolveDocumentResponseTimeZone(timeZone);
+
   return {
     id: document.id,
     fileName: document.fileName,
@@ -14,7 +31,16 @@ export function toDocumentResponse(document: DocumentEntity): DocumentResponse {
     contractId: document.contractId,
     noticeId: document.noticeId,
     uploadedAt: document.uploadedAt,
+    uploadedAtPersian: toPersianDateTimeString(document.uploadedAt, zone),
   };
+}
+
+export function getDocumentResponseTimeZone(
+  configService: ConfigService,
+): string {
+  return (
+    configService.get<string>(CONFIG_KEYS.APP_TIMEZONE) ?? DEFAULT_TIMEZONE
+  );
 }
 
 export function resolveParentOwnerId(document: {

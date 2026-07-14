@@ -454,6 +454,119 @@ describe('Cases (e2e)', () => {
         .set(authHeader(counselToken))
         .expect(403);
     });
+
+    it('updates a party via PATCH parties/:partyId', async () => {
+      const created = await createCaseViaApi(counselToken);
+      const partyId = created.parties[0].id;
+
+      const updated = await request(app.getHttpServer())
+        .patch(`/api/v1/cases/${created.id}/parties/${partyId}`)
+        .set(authHeader(counselToken))
+        .send({
+          name: 'Updated Vendor',
+          partyType: PartyType.PLAINTIFF,
+          contactInfo: 'updated@example.com',
+        })
+        .expect(200);
+
+      expect(updated.body.data.name).toBe('Updated Vendor');
+      expect(updated.body.data.partyType).toBe(PartyType.PLAINTIFF);
+
+      const partyLog = await getTestPrisma().activityLog.findFirst({
+        where: {
+          entityId: created.id,
+          action: AuditAction.UPDATED,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      expect(partyLog?.metadata).toMatchObject({
+        partyUpdated: expect.objectContaining({
+          id: partyId,
+          name: 'Updated Vendor',
+        }),
+      });
+    });
+
+    it('deletes a party via DELETE parties/:partyId', async () => {
+      const created = await createCaseViaApi(counselToken);
+      const partyId = created.parties[0].id;
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/cases/${created.id}/parties/${partyId}`)
+        .set(authHeader(counselToken))
+        .expect(200)
+        .expect({ data: { id: partyId, deleted: true } });
+
+      const listed = await request(app.getHttpServer())
+        .get(`/api/v1/cases/${created.id}/parties`)
+        .set(authHeader(counselToken))
+        .expect(200);
+
+      expect(listed.body.data).toHaveLength(0);
+
+      const partyLog = await getTestPrisma().activityLog.findFirst({
+        where: {
+          entityId: created.id,
+          action: AuditAction.UPDATED,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      expect(partyLog?.metadata).toMatchObject({
+        partyRemoved: expect.objectContaining({
+          id: partyId,
+          name: 'Vendor X',
+        }),
+      });
+    });
+  });
+
+  describe('Case timeline', () => {
+    it('returns paginated activity log entries for a case', async () => {
+      const created = await createCaseViaApi(counselToken);
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/cases/${created.id}`)
+        .set(authHeader(counselToken))
+        .send({ status: CaseStatus.IN_PROGRESS })
+        .expect(200);
+
+      const timeline = await request(app.getHttpServer())
+        .get(`/api/v1/cases/${created.id}/timeline`)
+        .set(authHeader(counselToken))
+        .expect(200);
+
+      expect(timeline.body.data.length).toBeGreaterThanOrEqual(2);
+      expect(timeline.body.meta).toEqual(
+        expect.objectContaining({ page: 1, limit: 20 }),
+      );
+      expect(
+        timeline.body.data.every(
+          (entry: { entityType: string; entityId: string }) =>
+            entry.entityType === EntityType.CASE &&
+            entry.entityId === created.id,
+        ),
+      ).toBe(true);
+    });
+
+    it('denies counsel from viewing another counsels case timeline', async () => {
+      const created = await createCaseViaApi(counsel2Token);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/cases/${created.id}/timeline`)
+        .set(authHeader(counselToken))
+        .expect(403);
+    });
+
+    it('allows viewer to read any case timeline', async () => {
+      const created = await createCaseViaApi(counselToken);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/cases/${created.id}/timeline`)
+        .set(authHeader(viewerToken))
+        .expect(200);
+    });
   });
 
   describe('List filters and pagination', () => {

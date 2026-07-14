@@ -1,15 +1,28 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { CaseStatus, CaseType, Priority } from '@prisma/client';
+import { CaseStatus, CaseType, ContractStatus, ContractType, DeadlineStatus, NoticeStatus, Priority } from '@prisma/client';
 import { authHeader, loginAs } from '../helpers/auth.helper';
 import { createTestApp } from '../helpers/app.helper';
 import {
   cleanupTestCases,
+  cleanupTestContracts,
+  cleanupTestDeadlines,
+  cleanupTestNotices,
   disconnectTestPrisma,
   getTestPrisma,
   getUserIdByEmail,
   seedTestUsers,
 } from '../helpers/db.helper';
+import { formatDateInTimezone } from '../../src/shared/utils/date-boundary.util';
+
+const APP_TIMEZONE = 'Asia/Tehran';
+
+function addDaysToYmd(ymd: string, days: number): string {
+  const [year, month, day] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days))
+    .toISOString()
+    .slice(0, 10);
+}
 
 describe('Dashboard (e2e)', () => {
   let app: INestApplication;
@@ -24,6 +37,9 @@ describe('Dashboard (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await cleanupTestDeadlines();
+    await cleanupTestNotices();
+    await cleanupTestContracts();
     await cleanupTestCases();
     await seedTestUsers();
     counselToken = (await loginAs(app, 'counsel@legal.local')).token;
@@ -31,6 +47,9 @@ describe('Dashboard (e2e)', () => {
   });
 
   afterAll(async () => {
+    await cleanupTestDeadlines();
+    await cleanupTestNotices();
+    await cleanupTestContracts();
     await cleanupTestCases();
     await app.close();
     await disconnectTestPrisma();
@@ -114,5 +133,75 @@ describe('Dashboard (e2e)', () => {
       .expect(200);
 
     expect(response.body.data.openCases).toBe(2);
+  });
+
+  it('returns accurate contracts, notices, and deadlines counts for counsel', async () => {
+    const counselId = await getUserIdByEmail('counsel@legal.local');
+    const prisma = getTestPrisma();
+    const today = formatDateInTimezone(new Date(), APP_TIMEZONE);
+    const yesterday = addDaysToYmd(today, -1);
+
+    await prisma.contract.create({
+      data: {
+        referenceCode: 'CTR-DASH-00001',
+        title: 'Active Contract',
+        type: ContractType.MSA,
+        status: ContractStatus.ACTIVE,
+        ownerId: counselId,
+        counterpartyName: 'Acme',
+      },
+    });
+
+    await prisma.legalNotice.create({
+      data: {
+        referenceCode: 'NTC-DASH-00001',
+        title: 'Pending Notice',
+        sender: 'Vendor',
+        receivedDate: new Date('2026-07-01T00:00:00.000Z'),
+        responseDeadline: new Date('2026-07-20T00:00:00.000Z'),
+        status: NoticeStatus.RECEIVED,
+        ownerId: counselId,
+      },
+    });
+
+    const legalCase = await prisma.legalCase.create({
+      data: {
+        referenceCode: 'CASE-DASH-00003',
+        title: 'Deadline Case',
+        type: CaseType.LITIGATION,
+        status: CaseStatus.OPEN,
+        priority: Priority.MEDIUM,
+        ownerId: counselId,
+      },
+    });
+
+    await prisma.deadline.createMany({
+      data: [
+        {
+          title: 'Overdue Dashboard Deadline',
+          dueDate: new Date(`${yesterday}T00:00:00.000Z`),
+          status: DeadlineStatus.PENDING,
+          caseId: legalCase.id,
+          createdById: counselId,
+        },
+        {
+          title: 'Today Dashboard Deadline',
+          dueDate: new Date(`${today}T00:00:00.000Z`),
+          status: DeadlineStatus.PENDING,
+          caseId: legalCase.id,
+          createdById: counselId,
+        },
+      ],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/dashboard/summary')
+      .set(authHeader(counselToken))
+      .expect(200);
+
+    expect(response.body.data.activeContracts).toBe(1);
+    expect(response.body.data.pendingNotices).toBe(1);
+    expect(response.body.data.overdueDeadlines).toBe(1);
+    expect(response.body.data.todayDeadlines).toBe(1);
   });
 });

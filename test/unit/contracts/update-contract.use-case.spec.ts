@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   AuditAction,
   ContractStatus,
@@ -22,6 +23,7 @@ describe('UpdateContractUseCase', () => {
     Pick<PrismaContractRepository, 'findById' | 'update'>
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -69,10 +71,15 @@ describe('UpdateContractUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new UpdateContractUseCase(
       contractRepository as unknown as PrismaContractRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
+      configService as unknown as ConfigService,
     );
   });
 

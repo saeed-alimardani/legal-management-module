@@ -1,9 +1,11 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CaseStatus, CaseType, Priority, UserRole } from '@prisma/client';
 import { GetCaseUseCase } from '../../../src/modules/cases/application/get-case.use-case';
 import { PrismaCaseRepository } from '../../../src/modules/cases/infrastructure/prisma-case.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
+import { createMockConfigService } from '../../helpers/config.helper';
 
 describe('GetCaseUseCase', () => {
   let useCase: GetCaseUseCase;
@@ -55,13 +57,17 @@ describe('GetCaseUseCase', () => {
     useCase = new GetCaseUseCase(
       caseRepository as unknown as PrismaCaseRepository,
       new AccessControlService(),
+      createMockConfigService() as unknown as ConfigService,
     );
   });
 
   it('returns case for owner counsel', async () => {
     const result = await useCase.execute(counsel, legalCase.id);
 
-    expect(result.data).toEqual(legalCase);
+    expect(result.data.id).toBe(legalCase.id);
+    expect(result.data.createdAtPersian).toMatch(
+      /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/,
+    );
   });
 
   it('returns case for admin regardless of ownership', async () => {

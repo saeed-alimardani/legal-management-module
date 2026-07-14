@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { CreateDeadlineUseCase } from '../../../src/modules/deadlines/application/create-deadline.use-case';
 import { PrismaDeadlineRepository } from '../../../src/modules/deadlines/infrastructure/prisma-deadline.repository';
+import { PrismaReminderRepository } from '../../../src/modules/reminders/infrastructure/prisma-reminder.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
@@ -25,6 +26,7 @@ describe('CreateDeadlineUseCase', () => {
     >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let reminderRepository: jest.Mocked<Pick<PrismaReminderRepository, 'create'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -79,8 +81,24 @@ describe('CreateDeadlineUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    reminderRepository = {
+      create: jest.fn().mockResolvedValue({
+        id: 'rem-1',
+        deadlineId: 'dl-1',
+        remindAt: new Date('2026-07-19T05:30:00.000Z'),
+        status: 'PENDING',
+        message: null,
+        sentAt: null,
+        createdById: counsel.id,
+        createdAt,
+        updatedAt: createdAt,
+        deadline: createdDeadline,
+      }),
+    };
+
     useCase = new CreateDeadlineUseCase(
       deadlineRepository as unknown as PrismaDeadlineRepository,
+      reminderRepository as unknown as PrismaReminderRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
       {
@@ -113,6 +131,12 @@ describe('CreateDeadlineUseCase', () => {
         action: AuditAction.CREATED,
         entityType: EntityType.DEADLINE,
         entityId: 'dl-1',
+      }),
+    );
+    expect(reminderRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deadlineId: 'dl-1',
+        createdById: counsel.id,
       }),
     );
   });

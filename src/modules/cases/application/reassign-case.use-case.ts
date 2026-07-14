@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, EntityType } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { PrismaCaseRepository } from '../infrastructure/prisma-case.repository';
+import { getCaseResponseTimeZone, toCaseResponse } from './case.helpers';
 
 @Injectable()
 export class ReassignCaseUseCase {
@@ -12,6 +14,7 @@ export class ReassignCaseUseCase {
     private readonly caseRepository: PrismaCaseRepository,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, caseId: string, newOwnerId: string) {
@@ -23,8 +26,10 @@ export class ReassignCaseUseCase {
       throw new NotFoundException('Case not found');
     }
 
+    const timeZone = getCaseResponseTimeZone(this.configService);
+
     if (existing.ownerId === newOwnerId) {
-      return buildSingleResponse(existing);
+      return buildSingleResponse(toCaseResponse(existing, timeZone));
     }
 
     const ownerExists =
@@ -47,6 +52,6 @@ export class ReassignCaseUseCase {
       },
     });
 
-    return buildSingleResponse(updated);
+    return buildSingleResponse(toCaseResponse(updated, timeZone));
   }
 }

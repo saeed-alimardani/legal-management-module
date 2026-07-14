@@ -350,7 +350,7 @@ ALTER TABLE "documents" ADD CONSTRAINT "documents_notice_id_fkey" FOREIGN KEY ("
 -- AddForeignKey
 ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- CheckConstraints (blueprint: exactly one parent matter per child row)
+-- CheckConstraints (exactly one parent matter per child row)
 ALTER TABLE "deadlines" ADD CONSTRAINT "deadlines_single_parent_chk" CHECK (
     (CASE WHEN "case_id" IS NOT NULL THEN 1 ELSE 0 END +
      CASE WHEN "contract_id" IS NOT NULL THEN 1 ELSE 0 END +

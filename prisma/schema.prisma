@@ -89,6 +89,19 @@ enum DocumentType {
   OTHER
 }
 
+enum FinancialRecordType {
+  EXPENSE
+  INVOICE
+  PAYMENT
+  OTHER
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  DISMISSED
+}
+
 enum AuditAction {
   CREATED
   UPDATED
@@ -98,6 +111,7 @@ enum AuditAction {
   DOCUMENT_UPLOADED
   DEADLINE_COMPLETED
   OWNERSHIP_TRANSFERRED
+  REMINDER_SENT
 }
 
 enum EntityType {
@@ -108,6 +122,9 @@ enum EntityType {
   DEADLINE
   TASK
   DOCUMENT
+  DISCUSSION
+  FINANCIAL_RECORD
+  REMINDER
 }
 
 model User {
@@ -127,8 +144,11 @@ model User {
   createdTasks      Task[]        @relation("TaskCreator")
   assignedDeadlines Deadline[]    @relation("DeadlineAssignee")
   createdDeadlines  Deadline[]    @relation("DeadlineCreator")
-  uploadedDocuments Document[]
-  activityLogs      ActivityLog[]
+  uploadedDocuments   Document[]
+  activityLogs        ActivityLog[]
+  discussions         Discussion[]
+  financialRecords    FinancialRecord[] @relation("FinancialRecordCreator")
+  createdReminders    Reminder[]        @relation("ReminderCreator")
 
   @@map("users")
 }
@@ -152,8 +172,10 @@ model LegalCase {
   parties        CaseParty[]
   deadlines      Deadline[]
   tasks          Task[]
-  documents      Document[]
-  relatedNotices LegalNotice[] @relation("NoticeRelatedCase")
+  documents        Document[]
+  relatedNotices   LegalNotice[]     @relation("NoticeRelatedCase")
+  discussions      Discussion[]
+  financialRecords FinancialRecord[]
 
   @@index([ownerId])
   @@index([status])
@@ -194,8 +216,10 @@ model Contract {
   owner          User          @relation("ContractOwner", fields: [ownerId], references: [id])
   deadlines      Deadline[]
   tasks          Task[]
-  documents      Document[]
-  relatedNotices LegalNotice[] @relation("NoticeRelatedContract")
+  documents        Document[]
+  relatedNotices   LegalNotice[]     @relation("NoticeRelatedContract")
+  discussions      Discussion[]
+  financialRecords FinancialRecord[]
 
   @@index([ownerId])
   @@index([status])
@@ -226,6 +250,7 @@ model LegalNotice {
   deadlines       Deadline[]
   tasks           Task[]
   documents       Document[]
+  discussions     Discussion[]
 
   @@index([ownerId])
   @@index([responseDeadline])
@@ -253,6 +278,7 @@ model Deadline {
   legalCase LegalCase?   @relation(fields: [caseId], references: [id])
   contract  Contract?    @relation(fields: [contractId], references: [id])
   notice    LegalNotice? @relation(fields: [noticeId], references: [id])
+  reminders Reminder[]
 
   @@index([dueDate, status])
   @@index([assigneeId, dueDate, status])
@@ -316,6 +342,74 @@ model Document {
   @@index([contractId])
   @@index([noticeId])
   @@map("documents")
+}
+
+model Discussion {
+  id         String    @id @default(uuid()) @db.Uuid
+  content    String    @db.Text
+  authorId   String    @map("author_id") @db.Uuid
+  caseId     String?   @map("case_id") @db.Uuid
+  contractId String?   @map("contract_id") @db.Uuid
+  noticeId   String?   @map("notice_id") @db.Uuid
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author    User         @relation(fields: [authorId], references: [id])
+  legalCase LegalCase?   @relation(fields: [caseId], references: [id])
+  contract  Contract?    @relation(fields: [contractId], references: [id])
+  notice    LegalNotice? @relation(fields: [noticeId], references: [id])
+
+  @@index([caseId])
+  @@index([contractId])
+  @@index([noticeId])
+  @@index([deletedAt])
+  @@map("discussions")
+}
+
+model FinancialRecord {
+  id          String              @id @default(uuid()) @db.Uuid
+  title       String              @db.VarChar(500)
+  amount      Decimal             @db.Decimal(14, 2)
+  currency    String              @default("IRR") @db.VarChar(3)
+  type        FinancialRecordType
+  description String?             @db.Text
+  recordDate  DateTime            @map("record_date") @db.Date
+  caseId      String?             @map("case_id") @db.Uuid
+  contractId  String?             @map("contract_id") @db.Uuid
+  createdById String              @map("created_by_id") @db.Uuid
+  deletedAt   DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  createdBy User       @relation("FinancialRecordCreator", fields: [createdById], references: [id])
+  legalCase LegalCase? @relation(fields: [caseId], references: [id])
+  contract  Contract?  @relation(fields: [contractId], references: [id])
+
+  @@index([caseId])
+  @@index([contractId])
+  @@index([recordDate])
+  @@index([deletedAt])
+  @@map("financial_records")
+}
+
+model Reminder {
+  id          String         @id @default(uuid()) @db.Uuid
+  deadlineId  String         @map("deadline_id") @db.Uuid
+  remindAt    DateTime       @map("remind_at") @db.Timestamptz(6)
+  status      ReminderStatus
+  message     String?        @db.VarChar(1000)
+  sentAt      DateTime?      @map("sent_at") @db.Timestamptz(6)
+  createdById String         @map("created_by_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  deadline  Deadline @relation(fields: [deadlineId], references: [id])
+  createdBy User     @relation("ReminderCreator", fields: [createdById], references: [id])
+
+  @@index([deadlineId])
+  @@index([status, remindAt])
+  @@map("reminders")
 }
 
 model ActivityLog {

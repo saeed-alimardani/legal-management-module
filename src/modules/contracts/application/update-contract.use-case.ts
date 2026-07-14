@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuditAction, EntityType } from '@prisma/client';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
@@ -12,6 +13,10 @@ import { toUtcDateOnly } from '../../../shared/utils/date-boundary.util';
 import { isValidContractDateRange } from '../domain/contract-date.rules';
 import { UpdateContractInput } from '../domain/contract.types';
 import { PrismaContractRepository } from '../infrastructure/prisma-contract.repository';
+import {
+  getContractResponseTimeZone,
+  toContractResponse,
+} from './contract.helpers';
 
 @Injectable()
 export class UpdateContractUseCase {
@@ -19,6 +24,7 @@ export class UpdateContractUseCase {
     private readonly contractRepository: PrismaContractRepository,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(
@@ -83,9 +89,10 @@ export class UpdateContractUseCase {
       normalized,
     );
     const changedFields = this.getChangedFields(existing, normalized);
+    const timeZone = getContractResponseTimeZone(this.configService);
 
     if (changedFields.length === 0) {
-      return buildSingleResponse(updated);
+      return buildSingleResponse(toContractResponse(updated, timeZone));
     }
 
     const statusChanged =
@@ -107,7 +114,7 @@ export class UpdateContractUseCase {
           },
     });
 
-    return buildSingleResponse(updated);
+    return buildSingleResponse(toContractResponse(updated, timeZone));
   }
 
   private getChangedFields(

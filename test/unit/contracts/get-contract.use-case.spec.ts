@@ -1,6 +1,8 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ContractStatus, ContractType, UserRole } from '@prisma/client';
 import { GetContractUseCase } from '../../../src/modules/contracts/application/get-contract.use-case';
+import { toContractResponse } from '../../../src/modules/contracts/application/contract.helpers';
 import { PrismaContractRepository } from '../../../src/modules/contracts/infrastructure/prisma-contract.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
@@ -10,6 +12,7 @@ describe('GetContractUseCase', () => {
   let contractRepository: jest.Mocked<
     Pick<PrismaContractRepository, 'findById'>
   >;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -61,15 +64,20 @@ describe('GetContractUseCase', () => {
       findById: jest.fn().mockResolvedValue(contract),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new GetContractUseCase(
       contractRepository as unknown as PrismaContractRepository,
       new AccessControlService(),
+      configService as unknown as ConfigService,
     );
   });
 
   it('returns contract for owner counsel', async () => {
     const result = await useCase.execute(counsel, contract.id);
-    expect(result.data).toEqual(contract);
+    expect(result.data).toEqual(toContractResponse(contract, 'Asia/Tehran'));
   });
 
   it('returns contract for admin and viewer regardless of ownership', async () => {

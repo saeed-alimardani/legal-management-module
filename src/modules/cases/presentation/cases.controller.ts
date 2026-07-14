@@ -29,16 +29,20 @@ import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type
 import { AddPartyUseCase } from '../application/add-party.use-case';
 import { CreateCaseUseCase } from '../application/create-case.use-case';
 import { DeleteCaseUseCase } from '../application/delete-case.use-case';
+import { DeletePartyUseCase } from '../application/delete-party.use-case';
+import { GetCaseTimelineUseCase } from '../application/get-case-timeline.use-case';
 import { GetCaseUseCase } from '../application/get-case.use-case';
 import { ListCasesUseCase } from '../application/list-cases.use-case';
 import { ListPartiesUseCase } from '../application/list-parties.use-case';
 import { ReassignCaseUseCase } from '../application/reassign-case.use-case';
 import { UpdateCaseUseCase } from '../application/update-case.use-case';
+import { UpdatePartyUseCase } from '../application/update-party.use-case';
 import { AddPartyDto } from './dto/add-party.dto';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { ListCasesQueryDto } from './dto/list-cases-query.dto';
 import { ReassignCaseDto } from './dto/reassign-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
+import { UpdatePartyDto } from './dto/update-party.dto';
 
 @ApiTags('Cases')
 @ApiBearerAuth()
@@ -54,6 +58,9 @@ export class CasesController {
     private readonly reassignCaseUseCase: ReassignCaseUseCase,
     private readonly listPartiesUseCase: ListPartiesUseCase,
     private readonly addPartyUseCase: AddPartyUseCase,
+    private readonly updatePartyUseCase: UpdatePartyUseCase,
+    private readonly deletePartyUseCase: DeletePartyUseCase,
+    private readonly getCaseTimelineUseCase: GetCaseTimelineUseCase,
   ) {}
 
   @Get()
@@ -88,6 +95,21 @@ export class CasesController {
       closedDate: dto.closedDate ? new Date(dto.closedDate) : undefined,
       parties: dto.parties,
     });
+  }
+
+  @Get(':id/timeline')
+  @ApiOperation({ summary: 'Case activity timeline' })
+  getTimeline(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: ListCasesQueryDto,
+  ) {
+    return this.getCaseTimelineUseCase.execute(
+      user,
+      id,
+      query.page ?? 1,
+      query.limit ?? 20,
+    );
   }
 
   @Get(':id')
@@ -175,5 +197,29 @@ export class CasesController {
     @Body() dto: AddPartyDto,
   ) {
     return this.addPartyUseCase.execute(user, id, dto);
+  }
+
+  @Patch(':id/parties/:partyId')
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @ApiOperation({ summary: 'Update a case party' })
+  updateParty(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('partyId', ParseUUIDPipe) partyId: string,
+    @Body() dto: UpdatePartyDto,
+  ) {
+    return this.updatePartyUseCase.execute(user, id, partyId, dto);
+  }
+
+  @Delete(':id/parties/:partyId')
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Remove a party from a case' })
+  deleteParty(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('partyId', ParseUUIDPipe) partyId: string,
+  ) {
+    return this.deletePartyUseCase.execute(user, id, partyId);
   }
 }

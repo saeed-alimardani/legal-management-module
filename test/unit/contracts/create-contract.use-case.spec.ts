@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   AuditAction,
   ContractStatus,
@@ -11,6 +12,7 @@ import {
   UserRole,
 } from '@prisma/client';
 import { CreateContractUseCase } from '../../../src/modules/contracts/application/create-contract.use-case';
+import { toContractResponse } from '../../../src/modules/contracts/application/contract.helpers';
 import { PrismaContractRepository } from '../../../src/modules/contracts/infrastructure/prisma-contract.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
@@ -25,6 +27,7 @@ describe('CreateContractUseCase', () => {
     >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -75,10 +78,15 @@ describe('CreateContractUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    configService = {
+      get: jest.fn().mockReturnValue('Asia/Tehran'),
+    };
+
     useCase = new CreateContractUseCase(
       contractRepository as unknown as PrismaContractRepository,
       new AccessControlService(),
       activityLogService as unknown as ActivityLogService,
+      configService as unknown as ConfigService,
     );
   });
 
@@ -89,7 +97,9 @@ describe('CreateContractUseCase', () => {
       counterpartyName: 'Acme Corp',
     });
 
-    expect(result.data).toEqual(createdContract);
+    expect(result.data).toEqual(
+      toContractResponse(createdContract, 'Asia/Tehran'),
+    );
     expect(contractRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         ownerId: counsel.id,

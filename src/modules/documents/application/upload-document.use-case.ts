@@ -4,6 +4,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuditAction, DocumentType, EntityType } from '@prisma/client';
 import { APP_CONSTANTS } from '../../../config/constants';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
@@ -14,6 +15,7 @@ import { FileStoragePort } from '../domain/file-storage.port';
 import { PrismaDocumentRepository } from '../infrastructure/prisma-document.repository';
 import {
   countParentRefs,
+  getDocumentResponseTimeZone,
   normalizeParentRef,
   toDocumentResponse,
 } from './document.helpers';
@@ -37,6 +39,7 @@ export class UploadDocumentUseCase {
     private readonly fileStorage: FileStoragePort,
     private readonly accessControl: AccessControlService,
     private readonly activityLogService: ActivityLogService,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: UploadDocumentCommand) {
@@ -110,6 +113,7 @@ export class UploadDocumentUseCase {
       },
     });
 
-    return buildSingleResponse(toDocumentResponse(document));
+    const timeZone = getDocumentResponseTimeZone(this.configService);
+    return buildSingleResponse(toDocumentResponse(document, timeZone));
   }
 }
