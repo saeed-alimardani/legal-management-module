@@ -6,8 +6,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { ContractsModule } from './modules/contracts/contracts.module';
 import { DeadlinesModule } from './modules/deadlines/deadlines.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { HealthModule } from './modules/health/health.module';
+import { OffboardingModule } from './modules/offboarding/offboarding.module';
 import { NoticesModule } from './modules/notices/notices.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -36,6 +38,8 @@ import { ActivityLogModule } from './shared/activity-log/activity-log.module';
     TasksModule,
     DocumentsModule,
     ActivityLogReadModule,
+    DashboardModule,
+    OffboardingModule,
     HealthModule,
   ],
 })

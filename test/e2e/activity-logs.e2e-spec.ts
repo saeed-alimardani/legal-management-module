@@ -125,7 +125,9 @@ describe('Activity Logs (e2e)', () => {
   // ──────────────────────────────────────────────────────────────────────────
   describe('Authentication', () => {
     it('returns 401 without JWT', async () => {
-      await request(app.getHttpServer()).get('/api/v1/activity-logs').expect(401);
+      await request(app.getHttpServer())
+        .get('/api/v1/activity-logs')
+        .expect(401);
     });
   });
 
@@ -149,12 +151,16 @@ describe('Activity Logs (e2e)', () => {
         .expect(200);
 
       expect(timeline.body.data.length).toBeGreaterThanOrEqual(2);
-      const actions = (timeline.body.data as { action: string }[]).map((e) => e.action);
+      const actions = (timeline.body.data as { action: string }[]).map(
+        (e) => e.action,
+      );
       expect(actions).toContain(AuditAction.CREATED);
       expect(actions).toContain(AuditAction.STATUS_CHANGED);
       // Manager's entry is visible to the case owner via scoped query (skipCounselActorScope=true)
       expect(
-        (timeline.body.data as { actorId: string }[]).some((e) => e.actorId !== counselId),
+        (timeline.body.data as { actorId: string }[]).some(
+          (e) => e.actorId !== counselId,
+        ),
       ).toBe(true);
     });
 
@@ -174,7 +180,11 @@ describe('Activity Logs (e2e)', () => {
       const taskRes = await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(counselToken))
-        .send({ title: 'Log Task', assigneeId: counselId, caseId: legalCase.id })
+        .send({
+          title: 'Log Task',
+          assigneeId: counselId,
+          caseId: legalCase.id,
+        })
         .expect(201);
 
       const task = taskRes.body.data;
@@ -195,7 +205,11 @@ describe('Activity Logs (e2e)', () => {
       const taskRes = await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(counselToken))
-        .send({ title: 'Status Task', assigneeId: counselId, caseId: legalCase.id })
+        .send({
+          title: 'Status Task',
+          assigneeId: counselId,
+          caseId: legalCase.id,
+        })
         .expect(201);
 
       const task = taskRes.body.data;
@@ -213,7 +227,9 @@ describe('Activity Logs (e2e)', () => {
         .expect(200);
 
       expect(timeline.body.data.length).toBeGreaterThanOrEqual(2);
-      const actions = (timeline.body.data as { action: string }[]).map((e) => e.action);
+      const actions = (timeline.body.data as { action: string }[]).map(
+        (e) => e.action,
+      );
       expect(actions).toContain(AuditAction.CREATED);
       expect(actions).toContain(AuditAction.STATUS_CHANGED);
     });

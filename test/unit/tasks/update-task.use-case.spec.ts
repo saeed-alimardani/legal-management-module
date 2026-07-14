@@ -52,7 +52,9 @@ describe('UpdateTaskUseCase', () => {
 
   const createdAt = new Date('2026-07-14T10:00:00.000Z');
 
-  const buildTask = (overrides: Partial<TaskWithParent> = {}): TaskWithParent => ({
+  const buildTask = (
+    overrides: Partial<TaskWithParent> = {},
+  ): TaskWithParent => ({
     id: 'task-1',
     title: 'Review contract',
     description: null,
@@ -78,9 +80,11 @@ describe('UpdateTaskUseCase', () => {
 
     taskRepository = {
       findById: jest.fn().mockResolvedValue(existing),
-      update: jest.fn().mockImplementation((_id, input) =>
-        Promise.resolve(buildTask({ ...input })),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation((_id, input) =>
+          Promise.resolve(buildTask({ ...input })),
+        ),
       userExistsAndActive: jest.fn().mockResolvedValue(true),
     };
 
@@ -124,9 +128,7 @@ describe('UpdateTaskUseCase', () => {
   });
 
   it('logs UPDATED when only title changes', async () => {
-    taskRepository.update.mockResolvedValue(
-      buildTask({ title: 'New title' }),
-    );
+    taskRepository.update.mockResolvedValue(buildTask({ title: 'New title' }));
 
     await useCase.execute(counsel, 'task-1', { title: 'New title' });
 
@@ -174,7 +176,9 @@ describe('UpdateTaskUseCase', () => {
       buildTask({ status: TaskStatus.IN_PROGRESS }),
     );
 
-    await useCase.execute(counsel, 'task-1', { status: TaskStatus.IN_PROGRESS });
+    await useCase.execute(counsel, 'task-1', {
+      status: TaskStatus.IN_PROGRESS,
+    });
 
     const updateInput = (taskRepository.update as jest.Mock).mock.calls[0][1];
     expect(updateInput.completedAt).toBeUndefined();
@@ -310,7 +314,9 @@ describe('UpdateTaskUseCase', () => {
         legalCase: { ownerId: counsel.id, deletedAt: null },
       }),
     );
-    taskRepository.update.mockResolvedValue(buildTask({ title: 'Manager edit' }));
+    taskRepository.update.mockResolvedValue(
+      buildTask({ title: 'Manager edit' }),
+    );
 
     const result = await useCase.execute(manager, 'task-1', {
       title: 'Manager edit',
@@ -321,7 +327,10 @@ describe('UpdateTaskUseCase', () => {
 
   it('returns Persian date strings', async () => {
     taskRepository.update.mockResolvedValue(
-      buildTask({ dueDate: new Date('2026-07-20T00:00:00.000Z'), title: 'New' }),
+      buildTask({
+        dueDate: new Date('2026-07-20T00:00:00.000Z'),
+        title: 'New',
+      }),
     );
 
     const result = await useCase.execute(counsel, 'task-1', { title: 'New' });

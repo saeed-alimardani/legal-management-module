@@ -1,16 +1,32 @@
 import {
+  AuditAction,
   CaseStatus,
   CaseType,
+  ContractStatus,
+  ContractType,
+  DeadlineStatus,
+  DocumentType,
+  EntityType,
+  NoticeStatus,
   PartyType,
   PrismaClient,
   Priority,
+  TaskStatus,
   UserRole,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { mkdir, writeFile } from 'fs/promises';
+import { join } from 'path';
+import {
+  todayInTimezone,
+  toUtcDateOnly,
+} from '../src/shared/utils/date-boundary.util';
 
 const prisma = new PrismaClient();
 
 const DEFAULT_PASSWORD = 'Password123!';
+const APP_TIMEZONE = process.env.APP_TIMEZONE ?? 'Asia/Tehran';
+const UPLOAD_DIR = process.env.UPLOAD_DIR ?? './uploads';
 
 const seedUsers = [
   {
@@ -120,6 +136,13 @@ const seedCases: SeedCaseInput[] = [
   },
 ];
 
+function addDaysFromToday(offset: number): Date {
+  const today = todayInTimezone(APP_TIMEZONE);
+  const shifted = new Date(today);
+  shifted.setUTCDate(shifted.getUTCDate() + offset);
+  return toUtcDateOnly(shifted);
+}
+
 async function seedUsersData(passwordHash: string): Promise<Map<string, string>> {
   const userIds = new Map<string, string>();
 
@@ -150,7 +173,7 @@ async function seedUsersData(passwordHash: string): Promise<Map<string, string>>
 async function upsertCaseWithParties(
   seedCase: SeedCaseInput,
   ownerId: string,
-): Promise<void> {
+): Promise<string> {
   const legalCase = await prisma.legalCase.upsert({
     where: { referenceCode: seedCase.referenceCode },
     update: {
@@ -190,12 +213,530 @@ async function upsertCaseWithParties(
       })),
     });
   }
+
+  return legalCase.id;
+}
+
+async function seedContracts(
+  userIds: Map<string, string>,
+): Promise<Map<string, string>> {
+  const contractIds = new Map<string, string>();
+  const counselId = userIds.get('counsel@legal.local')!;
+
+  const contracts = [
+    {
+      referenceCode: 'CTR-2026-00001',
+      title: 'Master Services Agreement — Acme Corp',
+      type: ContractType.MSA,
+      status: ContractStatus.ACTIVE,
+      counterpartyName: 'Acme Corp',
+      effectiveDate: new Date('2025-06-01'),
+      expirationDate: addDaysFromToday(90),
+      keyTerms: 'Annual renewal with 90-day notice period.',
+    },
+    {
+      referenceCode: 'CTR-2026-00002',
+      title: 'Mutual NDA — Beta LLC',
+      type: ContractType.NDA,
+      status: ContractStatus.DRAFT,
+      counterpartyName: 'Beta LLC',
+      keyTerms: 'Standard mutual confidentiality terms.',
+    },
+  ];
+
+  for (const contract of contracts) {
+    const record = await prisma.contract.upsert({
+      where: { referenceCode: contract.referenceCode },
+      update: {
+        title: contract.title,
+        type: contract.type,
+        status: contract.status,
+        ownerId: counselId,
+        counterpartyName: contract.counterpartyName,
+        effectiveDate: contract.effectiveDate ?? null,
+        expirationDate: contract.expirationDate ?? null,
+        renewalDate: null,
+        keyTerms: contract.keyTerms ?? null,
+        deletedAt: null,
+      },
+      create: {
+        referenceCode: contract.referenceCode,
+        title: contract.title,
+        type: contract.type,
+        status: contract.status,
+        ownerId: counselId,
+        counterpartyName: contract.counterpartyName,
+        effectiveDate: contract.effectiveDate ?? null,
+        expirationDate: contract.expirationDate ?? null,
+        keyTerms: contract.keyTerms ?? null,
+      },
+    });
+
+    contractIds.set(contract.referenceCode, record.id);
+  }
+
+  return contractIds;
+}
+
+async function upsertNoticeWithDeadline(input: {
+  referenceCode: string;
+  title: string;
+  sender: string;
+  receivedDate: Date;
+  responseDeadline: Date;
+  status: NoticeStatus;
+  ownerId: string;
+  createdById: string;
+  description?: string;
+  relatedCaseId?: string;
+  relatedContractId?: string;
+}): Promise<string> {
+  const notice = await prisma.legalNotice.upsert({
+    where: { referenceCode: input.referenceCode },
+    update: {
+      title: input.title,
+      sender: input.sender,
+      receivedDate: input.receivedDate,
+      responseDeadline: input.responseDeadline,
+      status: input.status,
+      ownerId: input.ownerId,
+      description: input.description ?? null,
+      relatedCaseId: input.relatedCaseId ?? null,
+      relatedContractId: input.relatedContractId ?? null,
+      deletedAt: null,
+    },
+    create: {
+      referenceCode: input.referenceCode,
+      title: input.title,
+      sender: input.sender,
+      receivedDate: input.receivedDate,
+      responseDeadline: input.responseDeadline,
+      status: input.status,
+      ownerId: input.ownerId,
+      description: input.description ?? null,
+      relatedCaseId: input.relatedCaseId ?? null,
+      relatedContractId: input.relatedContractId ?? null,
+    },
+  });
+
+  const existingDeadline = await prisma.deadline.findFirst({
+    where: { noticeId: notice.id },
+    select: { id: true },
+  });
+
+  const deadlineData = {
+    title: `Response deadline: ${notice.title}`,
+    dueDate: input.responseDeadline,
+    status: DeadlineStatus.PENDING,
+    assigneeId: input.ownerId,
+    noticeId: notice.id,
+    createdById: input.createdById,
+    caseId: null,
+    contractId: null,
+  };
+
+  if (existingDeadline) {
+    await prisma.deadline.update({
+      where: { id: existingDeadline.id },
+      data: deadlineData,
+    });
+  } else {
+    await prisma.deadline.create({ data: deadlineData });
+  }
+
+  return notice.id;
+}
+
+async function upsertStandaloneDeadline(input: {
+  title: string;
+  dueDate: Date;
+  assigneeId: string;
+  createdById: string;
+  caseId?: string;
+  contractId?: string;
+}): Promise<void> {
+  const existing = await prisma.deadline.findFirst({
+    where: {
+      title: input.title,
+      caseId: input.caseId ?? null,
+      contractId: input.contractId ?? null,
+      noticeId: null,
+    },
+    select: { id: true },
+  });
+
+  const data = {
+    title: input.title,
+    dueDate: input.dueDate,
+    status: DeadlineStatus.PENDING,
+    assigneeId: input.assigneeId,
+    createdById: input.createdById,
+    caseId: input.caseId ?? null,
+    contractId: input.contractId ?? null,
+    noticeId: null,
+  };
+
+  if (existing) {
+    await prisma.deadline.update({ where: { id: existing.id }, data });
+  } else {
+    await prisma.deadline.create({ data });
+  }
+}
+
+async function seedDeadlinesAndNotices(
+  userIds: Map<string, string>,
+  caseIds: Map<string, string>,
+  contractIds: Map<string, string>,
+): Promise<Map<string, string>> {
+  const noticeIds = new Map<string, string>();
+  const counselId = userIds.get('counsel@legal.local')!;
+  const counsel2Id = userIds.get('counsel2@legal.local')!;
+  const managerId = userIds.get('manager@legal.local')!;
+  const adminId = userIds.get('admin@legal.local')!;
+
+  const case1Id = caseIds.get('CASE-2026-00001')!;
+  const case2Id = caseIds.get('CASE-2026-00002')!;
+  const contract1Id = contractIds.get('CTR-2026-00001')!;
+
+  const notice1Id = await upsertNoticeWithDeadline({
+    referenceCode: 'NTC-2026-00001',
+    title: 'Regulatory Response Notice — Vendor X',
+    sender: 'Vendor X Legal',
+    receivedDate: addDaysFromToday(-2),
+    responseDeadline: addDaysFromToday(5),
+    status: NoticeStatus.RECEIVED,
+    ownerId: counselId,
+    createdById: adminId,
+    description: 'Formal notice requiring response within statutory window.',
+    relatedCaseId: case1Id,
+  });
+  noticeIds.set('NTC-2026-00001', notice1Id);
+
+  const notice2Id = await upsertNoticeWithDeadline({
+    referenceCode: 'NTC-2026-00002',
+    title: 'Overdue Compliance Notice',
+    sender: 'Compliance Board',
+    receivedDate: addDaysFromToday(-20),
+    responseDeadline: addDaysFromToday(-7),
+    status: NoticeStatus.OVERDUE,
+    ownerId: counselId,
+    createdById: managerId,
+    description: 'Past-due notice kept open for dashboard overdue demo.',
+  });
+  noticeIds.set('NTC-2026-00002', notice2Id);
+
+  await upsertStandaloneDeadline({
+    title: 'Case hearing preparation',
+    dueDate: addDaysFromToday(-3),
+    assigneeId: counselId,
+    createdById: adminId,
+    caseId: case1Id,
+  });
+
+  await upsertStandaloneDeadline({
+    title: 'Contract renewal review',
+    dueDate: addDaysFromToday(0),
+    assigneeId: managerId,
+    createdById: adminId,
+    contractId: contract1Id,
+  });
+
+  await upsertStandaloneDeadline({
+    title: 'Regulatory filing submission',
+    dueDate: addDaysFromToday(0),
+    assigneeId: counsel2Id,
+    createdById: managerId,
+    caseId: case2Id,
+  });
+
+  await upsertStandaloneDeadline({
+    title: 'Contract filing follow-up',
+    dueDate: addDaysFromToday(14),
+    assigneeId: counselId,
+    createdById: managerId,
+    contractId: contract1Id,
+  });
+
+  return noticeIds;
+}
+
+async function seedTasks(
+  userIds: Map<string, string>,
+  caseIds: Map<string, string>,
+  contractIds: Map<string, string>,
+  noticeIds: Map<string, string>,
+): Promise<void> {
+  const counselId = userIds.get('counsel@legal.local')!;
+  const managerId = userIds.get('manager@legal.local')!;
+  const case1Id = caseIds.get('CASE-2026-00001')!;
+  const contract1Id = contractIds.get('CTR-2026-00001')!;
+  const notice1Id = noticeIds.get('NTC-2026-00001')!;
+
+  const parentIds = [case1Id, contract1Id, notice1Id];
+  await prisma.task.deleteMany({
+    where: {
+      OR: [
+        { caseId: { in: parentIds } },
+        { contractId: { in: parentIds } },
+        { noticeId: { in: parentIds } },
+      ],
+    },
+  });
+
+  await prisma.task.createMany({
+    data: [
+      {
+        title: 'Draft initial response',
+        description: 'Prepare first response to vendor dispute.',
+        status: TaskStatus.DONE,
+        assigneeId: counselId,
+        caseId: case1Id,
+        createdById: managerId,
+        completedAt: new Date(),
+      },
+      {
+        title: 'Collect supporting evidence',
+        description: 'Gather delivery logs and SLA reports.',
+        status: TaskStatus.TODO,
+        assigneeId: counselId,
+        caseId: case1Id,
+        createdById: managerId,
+      },
+      {
+        title: 'Review renewal clauses',
+        status: TaskStatus.IN_PROGRESS,
+        assigneeId: counselId,
+        contractId: contract1Id,
+        createdById: managerId,
+      },
+      {
+        title: 'Coordinate notice response',
+        status: TaskStatus.TODO,
+        assigneeId: counselId,
+        noticeId: notice1Id,
+        createdById: managerId,
+      },
+    ],
+  });
+}
+
+async function seedDocuments(
+  userIds: Map<string, string>,
+  caseIds: Map<string, string>,
+  contractIds: Map<string, string>,
+  noticeIds: Map<string, string>,
+): Promise<void> {
+  const counselId = userIds.get('counsel@legal.local')!;
+  const case1Id = caseIds.get('CASE-2026-00001')!;
+  const contract1Id = contractIds.get('CTR-2026-00001')!;
+  const notice1Id = noticeIds.get('NTC-2026-00001')!;
+
+  await mkdir(UPLOAD_DIR, { recursive: true });
+
+  const documents = [
+    {
+      storageKey: 'seed-case-evidence.pdf',
+      fileName: 'vendor-dispute-evidence.pdf',
+      mimeType: 'application/pdf',
+      fileSize: 128,
+      documentType: DocumentType.EVIDENCE,
+      description: 'Delivery dispute supporting evidence',
+      caseId: case1Id,
+    },
+    {
+      storageKey: 'seed-contract-msa.pdf',
+      fileName: 'acme-msa-signed.pdf',
+      mimeType: 'application/pdf',
+      fileSize: 256,
+      documentType: DocumentType.CONTRACT,
+      description: 'Executed MSA with Acme Corp',
+      contractId: contract1Id,
+    },
+    {
+      storageKey: 'seed-notice-scan.pdf',
+      fileName: 'regulatory-notice-scan.pdf',
+      mimeType: 'application/pdf',
+      fileSize: 192,
+      documentType: DocumentType.CORRESPONDENCE,
+      description: 'Scanned copy of received notice',
+      noticeId: notice1Id,
+    },
+  ];
+
+  for (const doc of documents) {
+    const filePath = join(UPLOAD_DIR, doc.storageKey);
+    await writeFile(filePath, `%PDF-1.4 seed placeholder for ${doc.fileName}\n`);
+
+    await prisma.document.upsert({
+      where: { storageKey: doc.storageKey },
+      update: {
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        fileSize: doc.fileSize,
+        documentType: doc.documentType,
+        description: doc.description,
+        uploadedById: counselId,
+        caseId: doc.caseId ?? null,
+        contractId: doc.contractId ?? null,
+        noticeId: doc.noticeId ?? null,
+        deletedAt: null,
+      },
+      create: {
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        fileSize: doc.fileSize,
+        storageKey: doc.storageKey,
+        documentType: doc.documentType,
+        description: doc.description,
+        uploadedById: counselId,
+        caseId: doc.caseId ?? null,
+        contractId: doc.contractId ?? null,
+        noticeId: doc.noticeId ?? null,
+      },
+    });
+  }
+}
+
+async function seedActivityLogs(
+  userIds: Map<string, string>,
+  caseIds: Map<string, string>,
+  contractIds: Map<string, string>,
+  noticeIds: Map<string, string>,
+): Promise<void> {
+  const adminId = userIds.get('admin@legal.local')!;
+  const managerId = userIds.get('manager@legal.local')!;
+  const counselId = userIds.get('counsel@legal.local')!;
+
+  const entityIds = [
+    caseIds.get('CASE-2026-00001')!,
+    caseIds.get('CASE-2026-00002')!,
+    contractIds.get('CTR-2026-00001')!,
+    noticeIds.get('NTC-2026-00001')!,
+  ];
+
+  await prisma.activityLog.deleteMany({
+    where: { entityId: { in: entityIds } },
+  });
+
+  const logs = [
+    {
+      actorId: adminId,
+      action: AuditAction.CREATED,
+      entityType: EntityType.CASE,
+      entityId: caseIds.get('CASE-2026-00001')!,
+      metadata: { referenceCode: 'CASE-2026-00001', title: 'Dispute with Vendor X' },
+    },
+    {
+      actorId: managerId,
+      action: AuditAction.UPDATED,
+      entityType: EntityType.CASE,
+      entityId: caseIds.get('CASE-2026-00001')!,
+      metadata: { fields: ['priority'], previousPriority: 'MEDIUM' },
+    },
+    {
+      actorId: counselId,
+      action: AuditAction.STATUS_CHANGED,
+      entityType: EntityType.CASE,
+      entityId: caseIds.get('CASE-2026-00002')!,
+      metadata: { from: 'OPEN', to: 'IN_PROGRESS' },
+    },
+    {
+      actorId: adminId,
+      action: AuditAction.CREATED,
+      entityType: EntityType.CONTRACT,
+      entityId: contractIds.get('CTR-2026-00001')!,
+      metadata: { referenceCode: 'CTR-2026-00001' },
+    },
+    {
+      actorId: managerId,
+      action: AuditAction.CREATED,
+      entityType: EntityType.NOTICE,
+      entityId: noticeIds.get('NTC-2026-00001')!,
+      metadata: { referenceCode: 'NTC-2026-00001' },
+    },
+    {
+      actorId: counselId,
+      action: AuditAction.DOCUMENT_UPLOADED,
+      entityType: EntityType.DOCUMENT,
+      entityId: caseIds.get('CASE-2026-00001')!,
+      metadata: { fileName: 'vendor-dispute-evidence.pdf' },
+    },
+    {
+      actorId: adminId,
+      action: AuditAction.CREATED,
+      entityType: EntityType.CASE,
+      entityId: caseIds.get('CASE-2026-00002')!,
+      metadata: { referenceCode: 'CASE-2026-00002' },
+    },
+    {
+      actorId: managerId,
+      action: AuditAction.UPDATED,
+      entityType: EntityType.CONTRACT,
+      entityId: contractIds.get('CTR-2026-00001')!,
+      metadata: { fields: ['status'] },
+    },
+    {
+      actorId: counselId,
+      action: AuditAction.CREATED,
+      entityType: EntityType.NOTICE,
+      entityId: noticeIds.get('NTC-2026-00002')!,
+      metadata: { referenceCode: 'NTC-2026-00002' },
+    },
+    {
+      actorId: adminId,
+      action: AuditAction.REASSIGNED,
+      entityType: EntityType.CASE,
+      entityId: caseIds.get('CASE-2026-00003')!,
+      metadata: {
+        fromUserId: counselId,
+        toUserId: userIds.get('counsel2@legal.local')!,
+      },
+    },
+    {
+      actorId: managerId,
+      action: AuditAction.DEADLINE_COMPLETED,
+      entityType: EntityType.DEADLINE,
+      entityId: caseIds.get('CASE-2026-00001')!,
+      metadata: { title: 'Initial disclosure filing' },
+    },
+    {
+      actorId: counselId,
+      action: AuditAction.UPDATED,
+      entityType: EntityType.CASE,
+      entityId: caseIds.get('CASE-2026-00001')!,
+      metadata: { fields: ['description'] },
+    },
+    {
+      actorId: adminId,
+      action: AuditAction.CREATED,
+      entityType: EntityType.CONTRACT,
+      entityId: contractIds.get('CTR-2026-00002')!,
+      metadata: { referenceCode: 'CTR-2026-00002' },
+    },
+    {
+      actorId: managerId,
+      action: AuditAction.STATUS_CHANGED,
+      entityType: EntityType.NOTICE,
+      entityId: noticeIds.get('NTC-2026-00002')!,
+      metadata: { from: 'RECEIVED', to: 'OVERDUE' },
+    },
+    {
+      actorId: counselId,
+      action: AuditAction.UPDATED,
+      entityType: EntityType.NOTICE,
+      entityId: noticeIds.get('NTC-2026-00001')!,
+      metadata: { fields: ['description'] },
+    },
+  ];
+
+  await prisma.activityLog.createMany({ data: logs });
 }
 
 async function main(): Promise<void> {
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
   const userIds = await seedUsersData(passwordHash);
 
+  const caseIds = new Map<string, string>();
   for (const seedCase of seedCases) {
     const ownerId = userIds.get(seedCase.ownerEmail);
 
@@ -203,8 +744,15 @@ async function main(): Promise<void> {
       throw new Error(`Owner not found for case ${seedCase.referenceCode}`);
     }
 
-    await upsertCaseWithParties(seedCase, ownerId);
+    const caseId = await upsertCaseWithParties(seedCase, ownerId);
+    caseIds.set(seedCase.referenceCode, caseId);
   }
+
+  const contractIds = await seedContracts(userIds);
+  const noticeIds = await seedDeadlinesAndNotices(userIds, caseIds, contractIds);
+  await seedTasks(userIds, caseIds, contractIds, noticeIds);
+  await seedDocuments(userIds, caseIds, contractIds, noticeIds);
+  await seedActivityLogs(userIds, caseIds, contractIds, noticeIds);
 
   const partyCount = seedCases.reduce(
     (total, seedCase) => total + seedCase.parties.length,
@@ -212,9 +760,10 @@ async function main(): Promise<void> {
   );
 
   console.log(`Seeded ${seedUsers.length} users (password: ${DEFAULT_PASSWORD})`);
-  console.log(
-    `Seeded ${seedCases.length} cases with ${partyCount} parties`,
-  );
+  console.log(`Seeded ${seedCases.length} cases with ${partyCount} parties`);
+  console.log(`Seeded ${contractIds.size} contracts`);
+  console.log(`Seeded ${noticeIds.size} notices with linked deadlines`);
+  console.log('Seeded standalone deadlines, tasks, documents, and activity logs');
 }
 
 main()

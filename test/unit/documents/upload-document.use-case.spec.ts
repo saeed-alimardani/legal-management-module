@@ -4,7 +4,12 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import { AuditAction, DocumentType, EntityType, UserRole } from '@prisma/client';
+import {
+  AuditAction,
+  DocumentType,
+  EntityType,
+  UserRole,
+} from '@prisma/client';
 import { APP_CONSTANTS } from '../../../src/config/constants';
 import { UploadDocumentUseCase } from '../../../src/modules/documents/application/upload-document.use-case';
 import { FileStoragePort } from '../../../src/modules/documents/domain/file-storage.port';

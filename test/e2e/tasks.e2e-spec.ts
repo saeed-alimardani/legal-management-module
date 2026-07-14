@@ -154,7 +154,11 @@ describe('Tasks (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(viewerToken))
-        .send({ title: 'Viewer task', assigneeId: counselId, caseId: legalCase.id })
+        .send({
+          title: 'Viewer task',
+          assigneeId: counselId,
+          caseId: legalCase.id,
+        })
         .expect(403);
     });
 
@@ -163,7 +167,11 @@ describe('Tasks (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(counselToken))
-        .send({ title: 'Counsel Task', assigneeId: counselId, caseId: legalCase.id })
+        .send({
+          title: 'Counsel Task',
+          assigneeId: counselId,
+          caseId: legalCase.id,
+        })
         .expect(201);
       expect(res.body.data.title).toBe('Counsel Task');
       expect(res.body.data.status).toBe(TaskStatus.TODO);
@@ -175,7 +183,11 @@ describe('Tasks (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(managerToken))
-        .send({ title: 'Manager Task', assigneeId: counsel2Id, caseId: legalCase.id })
+        .send({
+          title: 'Manager Task',
+          assigneeId: counsel2Id,
+          caseId: legalCase.id,
+        })
         .expect(201);
       expect(res.body.data.assigneeId).toBe(counsel2Id);
     });
@@ -185,7 +197,11 @@ describe('Tasks (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(adminToken))
-        .send({ title: 'Admin Task', assigneeId: counselId, caseId: legalCase.id })
+        .send({
+          title: 'Admin Task',
+          assigneeId: counselId,
+          caseId: legalCase.id,
+        })
         .expect(201);
       expect(res.body.data.title).toBe('Admin Task');
     });
@@ -234,7 +250,11 @@ describe('Tasks (e2e)', () => {
       await request(app.getHttpServer())
         .post('/api/v1/tasks')
         .set(authHeader(counselToken))
-        .send({ title: 'Inactive Assignee', assigneeId: inactiveId, caseId: legalCase.id })
+        .send({
+          title: 'Inactive Assignee',
+          assigneeId: inactiveId,
+          caseId: legalCase.id,
+        })
         .expect(404);
     });
 
@@ -277,7 +297,9 @@ describe('Tasks (e2e)', () => {
   describe('Task lifecycle', () => {
     it('create → get → patch title → DONE (completedAt set) → IN_PROGRESS (completedAt null) → delete → soft-deleted in DB', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      const task = await createTaskViaApi(counselToken, { caseId: legalCase.id });
+      const task = await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+      });
 
       // GET
       const fetched = await request(app.getHttpServer())
@@ -320,7 +342,9 @@ describe('Tasks (e2e)', () => {
         .expect({ data: { success: true } });
 
       // DB confirms soft-delete (status preserved, deletedAt set)
-      const dbTask = await getTestPrisma().task.findUnique({ where: { id: task.id } });
+      const dbTask = await getTestPrisma().task.findUnique({
+        where: { id: task.id },
+      });
       expect(dbTask?.status).toBe(TaskStatus.IN_PROGRESS);
       expect(dbTask?.deletedAt).not.toBeNull();
 
@@ -333,7 +357,9 @@ describe('Tasks (e2e)', () => {
 
     it('generates CREATED, UPDATED, STATUS_CHANGED, and DELETED activity logs', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      const task = await createTaskViaApi(counselToken, { caseId: legalCase.id });
+      const task = await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+      });
 
       await request(app.getHttpServer())
         .patch(`/api/v1/tasks/${task.id}`)
@@ -399,7 +425,9 @@ describe('Tasks (e2e)', () => {
 
     it('manager can DELETE any task', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      const task = await createTaskViaApi(counselToken, { caseId: legalCase.id });
+      const task = await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+      });
 
       await request(app.getHttpServer())
         .delete(`/api/v1/tasks/${task.id}`)
@@ -410,7 +438,9 @@ describe('Tasks (e2e)', () => {
 
     it('creator (counsel) can DELETE their own task', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      const task = await createTaskViaApi(counselToken, { caseId: legalCase.id });
+      const task = await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+      });
 
       await request(app.getHttpServer())
         .delete(`/api/v1/tasks/${task.id}`)
@@ -426,7 +456,9 @@ describe('Tasks (e2e)', () => {
     it('counsel2 cannot GET a task on counsel case when not assigned', async () => {
       const legalCase = await createCaseViaApi(counselToken);
       // assigneeId defaults to counselId via createTaskViaApi helper
-      const task = await createTaskViaApi(counselToken, { caseId: legalCase.id });
+      const task = await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+      });
 
       await request(app.getHttpServer())
         .get(`/api/v1/tasks/${task.id}`)
@@ -438,7 +470,10 @@ describe('Tasks (e2e)', () => {
       const case1 = await createCaseViaApi(counselToken);
       const case2 = await createCaseViaApi(counsel2Token);
 
-      await createTaskViaApi(counselToken, { caseId: case1.id, title: 'Counsel Task' });
+      await createTaskViaApi(counselToken, {
+        caseId: case1.id,
+        title: 'Counsel Task',
+      });
       // counsel2's task — must explicitly set assigneeId to avoid defaulting to counselId
       await createTaskViaApi(counsel2Token, {
         caseId: case2.id,
@@ -457,7 +492,9 @@ describe('Tasks (e2e)', () => {
 
     it('viewer can GET any task', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      const task = await createTaskViaApi(counselToken, { caseId: legalCase.id });
+      const task = await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+      });
 
       await request(app.getHttpServer())
         .get(`/api/v1/tasks/${task.id}`)
@@ -486,7 +523,10 @@ describe('Tasks (e2e)', () => {
   describe('List filters', () => {
     it('filters by status', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      await createTaskViaApi(counselToken, { caseId: legalCase.id, title: 'TODO task' });
+      await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+        title: 'TODO task',
+      });
       const taskToDone = await createTaskViaApi(counselToken, {
         caseId: legalCase.id,
         title: 'DONE task',
@@ -510,7 +550,10 @@ describe('Tasks (e2e)', () => {
 
     it('filters by assigneeId', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      await createTaskViaApi(counselToken, { caseId: legalCase.id, assigneeId: counselId });
+      await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+        assigneeId: counselId,
+      });
       await createTaskViaApi(counselToken, {
         caseId: legalCase.id,
         title: 'Assigned to counsel2',
@@ -529,9 +572,18 @@ describe('Tasks (e2e)', () => {
 
     it('returns correct pagination meta', async () => {
       const legalCase = await createCaseViaApi(counselToken);
-      await createTaskViaApi(counselToken, { caseId: legalCase.id, title: 'Task A' });
-      await createTaskViaApi(counselToken, { caseId: legalCase.id, title: 'Task B' });
-      await createTaskViaApi(counselToken, { caseId: legalCase.id, title: 'Task C' });
+      await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+        title: 'Task A',
+      });
+      await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+        title: 'Task B',
+      });
+      await createTaskViaApi(counselToken, {
+        caseId: legalCase.id,
+        title: 'Task C',
+      });
 
       const res = await request(app.getHttpServer())
         .get('/api/v1/tasks')

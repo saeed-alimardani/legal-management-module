@@ -10,7 +10,9 @@ import { TaskWithParent } from '../../../src/modules/tasks/domain/task.types';
 describe('task.helpers', () => {
   const createdAt = new Date('2026-07-14T10:00:00.000Z');
 
-  const buildTask = (overrides: Partial<TaskWithParent> = {}): TaskWithParent => ({
+  const buildTask = (
+    overrides: Partial<TaskWithParent> = {},
+  ): TaskWithParent => ({
     id: 'task-1',
     title: 'Review',
     description: null,
@@ -52,13 +54,18 @@ describe('task.helpers', () => {
     });
 
     it('returns null dueDatePersian when dueDate is null', () => {
-      const response = toTaskResponse(buildTask({ dueDate: null }), 'Asia/Tehran');
+      const response = toTaskResponse(
+        buildTask({ dueDate: null }),
+        'Asia/Tehran',
+      );
 
       expect(response.dueDatePersian).toBeNull();
     });
 
     it('returns completedAtPersian when completedAt is set', () => {
-      const task = buildTask({ completedAt: new Date('2026-07-15T12:00:00.000Z') });
+      const task = buildTask({
+        completedAt: new Date('2026-07-15T12:00:00.000Z'),
+      });
       const response = toTaskResponse(task, 'Asia/Tehran');
 
       expect(response.completedAtPersian).toMatch(

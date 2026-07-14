@@ -217,15 +217,21 @@ describe('AccessControlService', () => {
 
   describe('canCancelTask', () => {
     it('allows admin to cancel any task', () => {
-      expect(service.canCancelTask(admin, { createdById: 'other-id' })).toBe(true);
+      expect(service.canCancelTask(admin, { createdById: 'other-id' })).toBe(
+        true,
+      );
     });
 
     it('allows manager to cancel any task', () => {
-      expect(service.canCancelTask(manager, { createdById: 'other-id' })).toBe(true);
+      expect(service.canCancelTask(manager, { createdById: 'other-id' })).toBe(
+        true,
+      );
     });
 
     it('denies viewer to cancel tasks', () => {
-      expect(service.canCancelTask(viewer, { createdById: viewer.id })).toBe(false);
+      expect(service.canCancelTask(viewer, { createdById: viewer.id })).toBe(
+        false,
+      );
     });
   });
 
@@ -233,15 +239,21 @@ describe('AccessControlService', () => {
 
   describe('canDeleteDocument', () => {
     it('allows manager to delete any document', () => {
-      expect(service.canDeleteDocument(manager, { uploadedById: 'other-id' })).toBe(true);
+      expect(
+        service.canDeleteDocument(manager, { uploadedById: 'other-id' }),
+      ).toBe(true);
     });
 
     it('allows admin to delete any document', () => {
-      expect(service.canDeleteDocument(admin, { uploadedById: 'other-id' })).toBe(true);
+      expect(
+        service.canDeleteDocument(admin, { uploadedById: 'other-id' }),
+      ).toBe(true);
     });
 
     it('denies viewer to delete documents', () => {
-      expect(service.canDeleteDocument(viewer, { uploadedById: viewer.id })).toBe(false);
+      expect(
+        service.canDeleteDocument(viewer, { uploadedById: viewer.id }),
+      ).toBe(false);
     });
   });
 

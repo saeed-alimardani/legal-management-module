@@ -109,12 +109,15 @@ describe('ActivityLogService', () => {
     it('defaults empty metadata to {} inside transaction', async () => {
       const txCreate = jest.fn().mockResolvedValue({ id: 'tx-log-id' });
 
-      await service.logWithinTransaction({ activityLog: { create: txCreate } } as any, {
-        actorId: 'user-id',
-        action: AuditAction.CREATED,
-        entityType: EntityType.NOTICE,
-        entityId: 'notice-id',
-      });
+      await service.logWithinTransaction(
+        { activityLog: { create: txCreate } } as any,
+        {
+          actorId: 'user-id',
+          action: AuditAction.CREATED,
+          entityType: EntityType.NOTICE,
+          entityId: 'notice-id',
+        },
+      );
 
       expect(txCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({ metadata: {} }),
@@ -154,10 +157,16 @@ describe('ActivityLogService', () => {
 
   describe('list() filters and pagination', () => {
     it('applies entityType and entityId filters', async () => {
-      await service.list({ entityType: EntityType.CASE, entityId: 'case-id' }, admin);
+      await service.list(
+        { entityType: EntityType.CASE, entityId: 'case-id' },
+        admin,
+      );
 
       const callArg = prisma.activityLog.findMany.mock.calls[0][0];
-      expect(callArg.where).toMatchObject({ entityType: EntityType.CASE, entityId: 'case-id' });
+      expect(callArg.where).toMatchObject({
+        entityType: EntityType.CASE,
+        entityId: 'case-id',
+      });
     });
 
     it('applies explicit actorId filter', async () => {
@@ -181,7 +190,12 @@ describe('ActivityLogService', () => {
 
       const result = await service.list({ page: 2, limit: 3 }, admin);
 
-      expect(result).toEqual({ items: [{ id: 'log-1' }], total: 7, page: 2, limit: 3 });
+      expect(result).toEqual({
+        items: [{ id: 'log-1' }],
+        total: 7,
+        page: 2,
+        limit: 3,
+      });
     });
 
     it('uses page 1 and limit 20 as defaults', async () => {

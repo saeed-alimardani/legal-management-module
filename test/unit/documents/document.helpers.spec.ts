@@ -67,7 +67,10 @@ describe('document.helpers', () => {
     });
 
     it('handles null description correctly', () => {
-      const response = toDocumentResponse({ ...baseDocument, description: null });
+      const response = toDocumentResponse({
+        ...baseDocument,
+        description: null,
+      });
 
       expect(response.description).toBeNull();
     });

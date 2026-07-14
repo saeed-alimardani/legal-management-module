@@ -1,7 +1,4 @@
-import {
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DocumentType, UserRole } from '@prisma/client';
 import { DownloadDocumentUseCase } from '../../../src/modules/documents/application/download-document.use-case';
 import { FileStoragePort } from '../../../src/modules/documents/domain/file-storage.port';

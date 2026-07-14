@@ -52,7 +52,9 @@ describe('CreateTaskUseCase', () => {
 
   const createdAt = new Date('2026-07-14T10:00:00.000Z');
 
-  const buildTask = (overrides: Partial<TaskWithParent> = {}): TaskWithParent => ({
+  const buildTask = (
+    overrides: Partial<TaskWithParent> = {},
+  ): TaskWithParent => ({
     id: 'task-1',
     title: 'Review contract',
     description: null,

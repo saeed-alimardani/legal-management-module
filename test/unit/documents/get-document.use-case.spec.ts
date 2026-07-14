@@ -1,7 +1,4 @@
-import {
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DocumentType, UserRole } from '@prisma/client';
 import { GetDocumentUseCase } from '../../../src/modules/documents/application/get-document.use-case';
 import { DocumentWithParent } from '../../../src/modules/documents/domain/document.types';

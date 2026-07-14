@@ -113,10 +113,9 @@ describe('ListDocumentsUseCase', () => {
   it('scopes counsel list with counselUserId filter', async () => {
     await useCase.execute(counsel, { caseId: 'case-1' });
 
-    expect(documentRepository.list).toHaveBeenCalledWith(
-      expect.any(Object),
-      { counselUserId: counsel.id },
-    );
+    expect(documentRepository.list).toHaveBeenCalledWith(expect.any(Object), {
+      counselUserId: counsel.id,
+    });
   });
 
   it('admin receives empty scope object', async () => {

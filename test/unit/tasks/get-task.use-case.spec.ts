@@ -48,7 +48,9 @@ describe('GetTaskUseCase', () => {
 
   const createdAt = new Date('2026-07-14T10:00:00.000Z');
 
-  const buildTask = (overrides: Partial<TaskWithParent> = {}): TaskWithParent => ({
+  const buildTask = (
+    overrides: Partial<TaskWithParent> = {},
+  ): TaskWithParent => ({
     id: 'task-1',
     title: 'Review contract',
     description: null,
@@ -117,17 +119,17 @@ describe('GetTaskUseCase', () => {
       }),
     );
 
-    await expect(
-      useCase.execute(otherCounsel, 'task-1'),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(useCase.execute(otherCounsel, 'task-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws 404 when task does not exist', async () => {
     taskRepository.findById.mockResolvedValue(null);
 
-    await expect(
-      useCase.execute(counsel, 'missing-task'),
-    ).rejects.toThrow(NotFoundException);
+    await expect(useCase.execute(counsel, 'missing-task')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('throws 404 when task parent is deleted', async () => {
@@ -139,9 +141,9 @@ describe('GetTaskUseCase', () => {
       }),
     );
 
-    await expect(
-      useCase.execute(counsel, 'task-1'),
-    ).rejects.toThrow(NotFoundException);
+    await expect(useCase.execute(counsel, 'task-1')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('allows viewer to view any task', async () => {

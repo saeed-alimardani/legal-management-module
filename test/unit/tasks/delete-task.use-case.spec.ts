@@ -51,7 +51,9 @@ describe('DeleteTaskUseCase', () => {
 
   const createdAt = new Date('2026-07-14T10:00:00.000Z');
 
-  const buildTask = (overrides: Partial<TaskWithParent> = {}): TaskWithParent => ({
+  const buildTask = (
+    overrides: Partial<TaskWithParent> = {},
+  ): TaskWithParent => ({
     id: 'task-1',
     title: 'Review contract',
     description: null,
@@ -75,7 +77,9 @@ describe('DeleteTaskUseCase', () => {
   beforeEach(() => {
     taskRepository = {
       findById: jest.fn().mockResolvedValue(buildTask()),
-      softDelete: jest.fn().mockResolvedValue(buildTask({ deletedAt: new Date() })),
+      softDelete: jest
+        .fn()
+        .mockResolvedValue(buildTask({ deletedAt: new Date() })),
     };
 
     activityLogService = {
@@ -145,23 +149,23 @@ describe('DeleteTaskUseCase', () => {
       }),
     );
 
-    await expect(
-      useCase.execute(otherCounsel, 'task-1'),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(useCase.execute(otherCounsel, 'task-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws 403 when viewer tries to delete', async () => {
-    await expect(
-      useCase.execute(viewer, 'task-1'),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(useCase.execute(viewer, 'task-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws 404 when task does not exist', async () => {
     taskRepository.findById.mockResolvedValue(null);
 
-    await expect(
-      useCase.execute(counsel, 'missing-task'),
-    ).rejects.toThrow(NotFoundException);
+    await expect(useCase.execute(counsel, 'missing-task')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('throws 404 when task parent is deleted', async () => {
@@ -173,9 +177,9 @@ describe('DeleteTaskUseCase', () => {
       }),
     );
 
-    await expect(
-      useCase.execute(counsel, 'task-1'),
-    ).rejects.toThrow(NotFoundException);
+    await expect(useCase.execute(counsel, 'task-1')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('logs DELETED with previousStatus from existing task regardless of soft-delete result', async () => {

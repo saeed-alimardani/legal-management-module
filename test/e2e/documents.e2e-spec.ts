@@ -287,7 +287,9 @@ describe('Documents (e2e)', () => {
         .get(`/api/v1/documents/${docId}/download`)
         .set(authHeader(counselToken))
         .expect(200);
-      expect(Buffer.from(downloaded.body).toString()).toContain('lifecycle-bytes');
+      expect(Buffer.from(downloaded.body).toString()).toContain(
+        'lifecycle-bytes',
+      );
 
       // Soft delete
       await request(app.getHttpServer())
@@ -322,7 +324,9 @@ describe('Documents (e2e)', () => {
         where: { entityType: EntityType.DOCUMENT, entityId: doc.id },
       });
 
-      expect(logs.some((l) => l.action === AuditAction.DOCUMENT_UPLOADED)).toBe(true);
+      expect(logs.some((l) => l.action === AuditAction.DOCUMENT_UPLOADED)).toBe(
+        true,
+      );
       expect(logs.some((l) => l.action === AuditAction.DELETED)).toBe(true);
     });
 
@@ -351,7 +355,11 @@ describe('Documents (e2e)', () => {
   describe('Parent types', () => {
     it('uploads a document on a contract', async () => {
       const contract = await createContractViaApi(counselToken);
-      const doc = await uploadDocViaApi(counselToken, 'contractId', contract.id);
+      const doc = await uploadDocViaApi(
+        counselToken,
+        'contractId',
+        contract.id,
+      );
       expect(doc.contractId).toBe(contract.id);
       expect(doc.caseId).toBeNull();
     });
@@ -375,7 +383,10 @@ describe('Documents (e2e)', () => {
         .set(authHeader(managerToken))
         .field('documentType', DocumentType.FILING)
         .field('caseId', legalCase.id)
-        .attach('file', PDF_BYTES, { filename: 'mgr-upload.pdf', contentType: 'application/pdf' })
+        .attach('file', PDF_BYTES, {
+          filename: 'mgr-upload.pdf',
+          contentType: 'application/pdf',
+        })
         .expect(201);
       expect(res.body.data.caseId).toBe(legalCase.id);
     });
@@ -400,7 +411,10 @@ describe('Documents (e2e)', () => {
         .set(authHeader(managerToken))
         .field('documentType', DocumentType.OTHER)
         .field('caseId', legalCase.id)
-        .attach('file', PDF_BYTES, { filename: 'mgr.pdf', contentType: 'application/pdf' })
+        .attach('file', PDF_BYTES, {
+          filename: 'mgr.pdf',
+          contentType: 'application/pdf',
+        })
         .expect(201);
 
       // Counsel (parent-owner but not uploader) cannot delete
@@ -461,7 +475,9 @@ describe('Documents (e2e)', () => {
         .set(authHeader(viewerToken))
         .expect(200);
 
-      expect(Buffer.from(downloaded.body).toString()).toContain('viewer-download');
+      expect(Buffer.from(downloaded.body).toString()).toContain(
+        'viewer-download',
+      );
     });
   });
 });

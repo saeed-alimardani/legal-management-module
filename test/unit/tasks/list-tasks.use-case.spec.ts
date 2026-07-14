@@ -41,7 +41,9 @@ describe('ListTasksUseCase', () => {
 
   const createdAt = new Date('2026-07-14T10:00:00.000Z');
 
-  const buildTask = (overrides: Partial<TaskWithParent> = {}): TaskWithParent => ({
+  const buildTask = (
+    overrides: Partial<TaskWithParent> = {},
+  ): TaskWithParent => ({
     id: 'task-1',
     title: 'Review contract',
     description: null,
@@ -83,37 +85,27 @@ describe('ListTasksUseCase', () => {
   it('passes counselUserId scope when user is LEGAL_COUNSEL', async () => {
     await useCase.execute(counsel, { page: 1, limit: 10 });
 
-    expect(taskRepository.list).toHaveBeenCalledWith(
-      expect.any(Object),
-      { counselUserId: counsel.id },
-    );
+    expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {
+      counselUserId: counsel.id,
+    });
   });
 
   it('passes empty scope when user is manager', async () => {
     await useCase.execute(manager, { page: 1, limit: 10 });
 
-    expect(taskRepository.list).toHaveBeenCalledWith(
-      expect.any(Object),
-      {},
-    );
+    expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {});
   });
 
   it('passes empty scope when user is admin', async () => {
     await useCase.execute(admin, { page: 1, limit: 10 });
 
-    expect(taskRepository.list).toHaveBeenCalledWith(
-      expect.any(Object),
-      {},
-    );
+    expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {});
   });
 
   it('passes empty scope when user is viewer', async () => {
     await useCase.execute(viewer, { page: 1, limit: 10 });
 
-    expect(taskRepository.list).toHaveBeenCalledWith(
-      expect.any(Object),
-      {},
-    );
+    expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {});
   });
 
   it('forwards all filter fields to the repository', async () => {

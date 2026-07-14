@@ -1,8 +1,10 @@
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
-import { AuditAction, DocumentType, EntityType, UserRole } from '@prisma/client';
+  AuditAction,
+  DocumentType,
+  EntityType,
+  UserRole,
+} from '@prisma/client';
 import { DeleteDocumentUseCase } from '../../../src/modules/documents/application/delete-document.use-case';
 import { DocumentWithParent } from '../../../src/modules/documents/domain/document.types';
 import { PrismaDocumentRepository } from '../../../src/modules/documents/infrastructure/prisma-document.repository';
@@ -69,7 +71,9 @@ describe('DeleteDocumentUseCase', () => {
   beforeEach(() => {
     documentRepository = {
       findById: jest.fn().mockResolvedValue(existingDocument),
-      softDelete: jest.fn().mockResolvedValue({ ...existingDocument, deletedAt: new Date() }),
+      softDelete: jest
+        .fn()
+        .mockResolvedValue({ ...existingDocument, deletedAt: new Date() }),
     };
 
     activityLogService = {

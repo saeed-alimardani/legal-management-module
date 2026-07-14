@@ -12,7 +12,11 @@ import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto'
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { FileStoragePort } from '../domain/file-storage.port';
 import { PrismaDocumentRepository } from '../infrastructure/prisma-document.repository';
-import { countParentRefs, normalizeParentRef, toDocumentResponse } from './document.helpers';
+import {
+  countParentRefs,
+  normalizeParentRef,
+  toDocumentResponse,
+} from './document.helpers';
 
 export interface UploadDocumentCommand {
   fileName: string;

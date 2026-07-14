@@ -75,11 +75,19 @@ describe('ListActivityLogsUseCase', () => {
 
     it('returns paginated response with data and meta', async () => {
       const items = [{ id: 'log-1' }];
-      activityLogList.mockResolvedValue({ items, total: 1, page: 1, limit: 20 });
+      activityLogList.mockResolvedValue({
+        items,
+        total: 1,
+        page: 1,
+        limit: 20,
+      });
 
       const result = await useCase.execute(admin, { page: 1, limit: 20 });
 
-      expect(result).toEqual({ data: items, meta: { page: 1, limit: 20, total: 1 } });
+      expect(result).toEqual({
+        data: items,
+        meta: { page: 1, limit: 20, total: 1 },
+      });
     });
   });
 
@@ -87,7 +95,12 @@ describe('ListActivityLogsUseCase', () => {
     it('counsel owns case → skipCounselActorScope true, returns paginated response', async () => {
       prisma.legalCase.findFirst.mockResolvedValue({ ownerId: counselId });
       const items = [{ id: 'log-2' }];
-      activityLogList.mockResolvedValue({ items, total: 1, page: 1, limit: 20 });
+      activityLogList.mockResolvedValue({
+        items,
+        total: 1,
+        page: 1,
+        limit: 20,
+      });
 
       const result = await useCase.execute(counsel, {
         entityType: EntityType.CASE,
@@ -101,14 +114,22 @@ describe('ListActivityLogsUseCase', () => {
         counsel,
         { skipCounselActorScope: true },
       );
-      expect(result).toEqual({ data: items, meta: { page: 1, limit: 20, total: 1 } });
+      expect(result).toEqual({
+        data: items,
+        meta: { page: 1, limit: 20, total: 1 },
+      });
     });
 
     it('counsel does not own case → ForbiddenException', async () => {
       prisma.legalCase.findFirst.mockResolvedValue({ ownerId: 'other-id' });
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.CASE, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.CASE,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -116,7 +137,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.legalCase.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.CASE, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.CASE,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -126,7 +152,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.contract.findFirst.mockResolvedValue({ ownerId: counselId });
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.CONTRACT, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.CONTRACT,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -134,7 +165,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.contract.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.CONTRACT, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.CONTRACT,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -144,7 +180,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.legalNotice.findFirst.mockResolvedValue({ ownerId: counselId });
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.NOTICE, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.NOTICE,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).resolves.toBeDefined();
     });
   });
@@ -159,7 +200,12 @@ describe('ListActivityLogsUseCase', () => {
       });
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.DEADLINE, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.DEADLINE,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -167,7 +213,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.deadline.findUnique.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.DEADLINE, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.DEADLINE,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -182,7 +233,12 @@ describe('ListActivityLogsUseCase', () => {
       });
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.TASK, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.TASK,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -190,7 +246,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.task.findUnique.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.TASK, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.TASK,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -204,7 +265,12 @@ describe('ListActivityLogsUseCase', () => {
       });
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.DOCUMENT, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.DOCUMENT,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).resolves.toBeDefined();
     });
 
@@ -212,7 +278,12 @@ describe('ListActivityLogsUseCase', () => {
       prisma.document.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.DOCUMENT, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.DOCUMENT,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -220,7 +291,12 @@ describe('ListActivityLogsUseCase', () => {
   describe('unsupported entity type', () => {
     it('USER entityType → ForbiddenException', async () => {
       await expect(
-        useCase.execute(counsel, { entityType: EntityType.USER, entityId, page: 1, limit: 20 }),
+        useCase.execute(counsel, {
+          entityType: EntityType.USER,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -235,11 +311,9 @@ describe('ListActivityLogsUseCase', () => {
       });
 
       expect(prisma.legalCase.findFirst).not.toHaveBeenCalled();
-      expect(activityLogList).toHaveBeenCalledWith(
-        expect.anything(),
-        admin,
-        { skipCounselActorScope: true },
-      );
+      expect(activityLogList).toHaveBeenCalledWith(expect.anything(), admin, {
+        skipCounselActorScope: true,
+      });
     });
 
     it('viewer accesses entity-scoped log without DB lookup', async () => {
@@ -256,7 +330,12 @@ describe('ListActivityLogsUseCase', () => {
 
   describe('pagination forwarded', () => {
     it('passes custom page and limit to list', async () => {
-      activityLogList.mockResolvedValue({ items: [], total: 0, page: 3, limit: 5 });
+      activityLogList.mockResolvedValue({
+        items: [],
+        total: 0,
+        page: 3,
+        limit: 5,
+      });
 
       await useCase.execute(admin, { page: 3, limit: 5 });
 
@@ -268,7 +347,12 @@ describe('ListActivityLogsUseCase', () => {
     });
 
     it('result meta reflects page and limit from list response', async () => {
-      activityLogList.mockResolvedValue({ items: [], total: 50, page: 2, limit: 10 });
+      activityLogList.mockResolvedValue({
+        items: [],
+        total: 50,
+        page: 2,
+        limit: 10,
+      });
 
       const result = await useCase.execute(admin, { page: 2, limit: 10 });
 
