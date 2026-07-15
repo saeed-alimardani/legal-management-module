@@ -7,6 +7,7 @@ Internal legal operations API for managing cases, contracts, notices, deadlines,
 ## Table of Contents
 
 - [Stack](#stack)
+- [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Environment Variables](#environment-variables)
 - [Seed Credentials](#seed-credentials)
@@ -23,6 +24,7 @@ Internal legal operations API for managing cases, contracts, notices, deadlines,
 - [Project Structure](#project-structure)
 - [Scripts](#scripts)
 - [Feature Coverage](#feature-coverage)
+- [Troubleshooting](#troubleshooting)
 - [Future Improvements](#future-improvements)
 - [License](#license)
 
@@ -50,10 +52,11 @@ cd legal-management-module
 cp .env.example .env
 docker compose up --build
 
-# First-time setup (separate terminal)
-docker compose exec app npx prisma migrate deploy
+# First-time setup (separate terminal, after the app container is healthy)
 docker compose exec app npx prisma db seed
 ```
+
+Migrations run automatically when the app container starts (`prisma migrate deploy` in the Docker entrypoint). Seed data must be applied manually once.
 
 ### Local development
 
@@ -434,6 +437,7 @@ src/
 | `npm run start:dev` | Dev server with hot reload |
 | `npm run build` | Compile TypeScript |
 | `npm run start:prod` | Run compiled app |
+| `npm run lint` | ESLint with auto-fix |
 | `npx prisma db seed` | Seed demo data |
 | `npm run prisma:migrate:dev` | Create/apply migrations (dev) |
 
@@ -462,6 +466,25 @@ All core product requirements are implemented:
 | Seed data, migrations, tests, Docker setup | ✅ |
 
 The project is API-first; Swagger at `/api/docs` serves as the interactive client.
+
+## Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| `ECONNREFUSED` on port 5432 | Start Postgres: `docker compose up postgres -d`, or check `DATABASE_URL` |
+| `JWT_SECRET` validation error | Use a secret of at least 32 characters in `.env` |
+| Empty lists after first Docker start | Run `docker compose exec app npx prisma db seed` |
+| Integration/e2e tests fail | Ensure Postgres is running and `DATABASE_URL` in `.env` is correct |
+| Port 3000 already in use | Change `PORT` in `.env` or stop the conflicting process |
+
+## Future Improvements
+
+Out of scope for the current MVP but natural next steps:
+
+- Reminder delivery (email or push) instead of marking reminders as sent only
+- Cloud object storage adapter (e.g. S3) alongside local file storage
+- CI pipeline for build, lint, and test on every push
+- Frontend client consuming this API
 
 ## License
 
