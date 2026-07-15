@@ -16,6 +16,8 @@ import { AccessControlService } from '../../../src/shared/access-control/access-
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
 import { createMockConfigService } from '../../helpers/config.helper';
+import { MatterInvolvementService } from '../../../src/shared/access-control/matter-involvement.service';
+import { createMockMatterInvolvement } from '../../helpers/rbac.helper';
 
 describe('CreateDiscussionUseCase', () => {
   let useCase: CreateDiscussionUseCase;
@@ -23,6 +25,9 @@ describe('CreateDiscussionUseCase', () => {
     Pick<PrismaDiscussionRepository, 'findParentOwner' | 'create'>
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let matterInvolvement: jest.Mocked<
+    Pick<MatterInvolvementService, 'isUserInvolvedInParent'>
+  >;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -72,9 +77,12 @@ describe('CreateDiscussionUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    matterInvolvement = createMockMatterInvolvement();
+
     useCase = new CreateDiscussionUseCase(
       discussionRepository as unknown as PrismaDiscussionRepository,
       new AccessControlService(),
+      matterInvolvement as unknown as MatterInvolvementService,
       activityLogService as unknown as ActivityLogService,
       createMockConfigService() as unknown as ConfigService,
     );
@@ -115,6 +123,7 @@ describe('CreateDiscussionUseCase', () => {
     discussionRepository.findParentOwner.mockResolvedValue({
       ownerId: otherCounsel.id,
     });
+    matterInvolvement.isUserInvolvedInParent.mockResolvedValue(false);
 
     await expect(
       useCase.execute(counsel, { content: 'Test', caseId: 'case-2' }),
@@ -131,7 +140,7 @@ describe('CreateDiscussionUseCase', () => {
 describe('GetDiscussionUseCase', () => {
   let useCase: GetDiscussionUseCase;
   let discussionRepository: jest.Mocked<
-    Pick<PrismaDiscussionRepository, 'findById'>
+    Pick<PrismaDiscussionRepository, 'findById' | 'isUserInvolved'>
   >;
 
   const counsel: AuthenticatedUser = {
@@ -168,6 +177,7 @@ describe('GetDiscussionUseCase', () => {
   beforeEach(() => {
     discussionRepository = {
       findById: jest.fn().mockResolvedValue(discussion),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     useCase = new GetDiscussionUseCase(

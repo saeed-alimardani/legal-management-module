@@ -101,15 +101,15 @@ describe('CreateUserUseCase', () => {
     );
   });
 
-  it('allows manager to create user', async () => {
-    const result = await useCase.execute(manager, {
-      email: 'new@legal.local',
-      password: 'password123',
-      fullName: 'New User',
-      role: UserRole.LEGAL_COUNSEL,
-    });
-
-    expect(result.data).toEqual(createdUser);
+  it('throws forbidden for manager', async () => {
+    await expect(
+      useCase.execute(manager, {
+        email: 'new@legal.local',
+        password: 'password123',
+        fullName: 'New User',
+        role: UserRole.LEGAL_COUNSEL,
+      }),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('throws forbidden for counsel', async () => {

@@ -40,7 +40,7 @@ export class CreateContractUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateContractCommand) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageCoreEntities(user);
 
     const effectiveDate = command.effectiveDate
       ? toUtcDateOnly(command.effectiveDate)

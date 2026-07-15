@@ -17,9 +17,9 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
-    container_name: legal-app
+  backend:
+    build: ./backend
+    container_name: legal-backend
     restart: unless-stopped
     depends_on:
       postgres:
@@ -32,11 +32,25 @@ services:
       JWT_SECRET: change-me-to-a-long-random-secret
       JWT_EXPIRES_IN: 8h
       UPLOAD_DIR: /app/uploads
+      FRONTEND_URL: http://localhost:3001
     ports:
       - '3000:3000'
     volumes:
-      - uploads_data:/app/uploads
+      - ./backend/uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+    container_name: legal-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      PORT: 3001
+    ports:
+      - '3001:3001'
 
 volumes:
   postgres_data:
-  uploads_data:

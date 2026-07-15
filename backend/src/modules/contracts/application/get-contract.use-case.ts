@@ -24,7 +24,11 @@ export class GetContractUseCase {
       throw new NotFoundException('Contract not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: contract.ownerId });
+    const involved = await this.contractRepository.isUserInvolved(
+      contractId,
+      user.id,
+    );
+    this.accessControl.assertCanViewMatter(user, contract.ownerId, involved);
 
     const timeZone = getContractResponseTimeZone(this.configService);
     return buildSingleResponse(toContractResponse(contract, timeZone));

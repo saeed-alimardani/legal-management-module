@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { buildCounselDocumentWhere } from '../../../shared/access-control/counsel-involvement.where';
 import {
   CreateDocumentInput,
   DocumentListScope,
@@ -42,6 +43,18 @@ export class PrismaDocumentRepository {
       where: { id, deletedAt: null },
       include: parentInclude,
     });
+  }
+
+  async isUserInvolved(documentId: string, userId: string): Promise<boolean> {
+    const count = await this.prisma.document.count({
+      where: {
+        id: documentId,
+        deletedAt: null,
+        ...buildCounselDocumentWhere(userId),
+      },
+    });
+
+    return count > 0;
   }
 
   async list(
@@ -103,15 +116,6 @@ export class PrismaDocumentRepository {
       return {};
     }
 
-    const userId = scope.counselUserId;
-
-    return {
-      OR: [
-        { uploadedById: userId },
-        { legalCase: { ownerId: userId, deletedAt: null } },
-        { contract: { ownerId: userId, deletedAt: null } },
-        { notice: { ownerId: userId, deletedAt: null } },
-      ],
-    };
+    return buildCounselDocumentWhere(scope.counselUserId);
   }
 }

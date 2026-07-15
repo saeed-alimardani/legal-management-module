@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuditAction, DeadlineStatus, EntityType } from '@prisma/client';
 import { CONFIG_KEYS } from '../../../config/constants';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
+import { MatterInvolvementService } from '../../../shared/access-control/matter-involvement.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
@@ -36,13 +37,12 @@ export class CreateDeadlineUseCase {
     private readonly deadlineRepository: PrismaDeadlineRepository,
     private readonly reminderRepository: PrismaReminderRepository,
     private readonly accessControl: AccessControlService,
+    private readonly matterInvolvement: MatterInvolvementService,
     private readonly activityLogService: ActivityLogService,
     private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateDeadlineCommand) {
-    this.accessControl.assertCanMutate(user);
-
     if (countParentRefs(command) !== 1) {
       throw new BadRequestException(
         'Exactly one of caseId, contractId, or noticeId is required',
@@ -59,7 +59,19 @@ export class CreateDeadlineUseCase {
       throw new NotFoundException('Parent matter not found');
     }
 
-    this.accessControl.assertCanEdit(user, { ownerId: parent.ownerId });
+    const involved = await this.matterInvolvement.isUserInvolvedInParent(
+      {
+        caseId: command.caseId,
+        contractId: command.contractId,
+        noticeId: command.noticeId,
+      },
+      user.id,
+    );
+    this.accessControl.assertCanContributeToMatter(
+      user,
+      parent.ownerId,
+      involved,
+    );
 
     if (command.assigneeId) {
       const assigneeExists = await this.deadlineRepository.userExistsAndActive(

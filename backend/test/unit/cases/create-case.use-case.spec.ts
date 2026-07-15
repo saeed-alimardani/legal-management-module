@@ -59,7 +59,7 @@ describe('CreateCaseUseCase', () => {
     type: CaseType.LITIGATION,
     status: CaseStatus.OPEN,
     priority: Priority.HIGH,
-    ownerId: counsel.id,
+    ownerId: manager.id,
     description: null,
     openedDate: null,
     closedDate: null,
@@ -90,8 +90,8 @@ describe('CreateCaseUseCase', () => {
     );
   });
 
-  it('creates a case for counsel with self as owner', async () => {
-    const result = await useCase.execute(counsel, {
+  it('creates a case for manager with self as owner', async () => {
+    const result = await useCase.execute(manager, {
       title: 'Test Case',
       type: CaseType.LITIGATION,
       priority: Priority.HIGH,
@@ -103,13 +103,13 @@ describe('CreateCaseUseCase', () => {
     );
     expect(caseRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        ownerId: counsel.id,
+        ownerId: manager.id,
         referenceCode: 'CASE-2026-00001',
         status: CaseStatus.OPEN,
       }),
     );
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.CREATED,
       entityType: EntityType.CASE,
       entityId: createdCase.id,
@@ -129,7 +129,7 @@ describe('CreateCaseUseCase', () => {
       },
     ];
 
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'Test Case',
       type: CaseType.LITIGATION,
       priority: Priority.HIGH,
@@ -167,7 +167,7 @@ describe('CreateCaseUseCase', () => {
         priority: Priority.HIGH,
         ownerId: 'other-owner-id',
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('rejects viewer mutations', async () => {

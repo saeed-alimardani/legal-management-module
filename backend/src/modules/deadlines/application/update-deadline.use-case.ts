@@ -49,8 +49,7 @@ export class UpdateDeadlineUseCase {
     }
 
     this.accessControl.assertCanEditDeadline(user, {
-      ownerId: parentOwnerId,
-      assigneeId: existing.assigneeId,
+      createdById: existing.createdById,
     });
 
     if (command.assigneeId) {

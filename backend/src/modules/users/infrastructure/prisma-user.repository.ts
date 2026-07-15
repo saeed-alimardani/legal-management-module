@@ -6,6 +6,7 @@ import {
   ListUsersFilters,
   SafeUser,
   UpdateUserInput,
+  UserDirectoryEntry,
 } from '../domain/user.types';
 
 const safeUserSelect = {
@@ -82,5 +83,16 @@ export class PrismaUserRepository {
     ]);
 
     return { items, total };
+  }
+
+  listDirectory(): Promise<UserDirectoryEntry[]> {
+    return this.prisma.user.findMany({
+      where: { isActive: true },
+      orderBy: { fullName: 'asc' },
+      select: {
+        id: true,
+        fullName: true,
+      },
+    });
   }
 }

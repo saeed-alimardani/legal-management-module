@@ -7,22 +7,30 @@ import {
   NoticeStatus,
   Prisma,
   TaskStatus,
-  UserRole,
 } from '@prisma/client';
 import { CONFIG_KEYS } from '../../../config/constants';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
+import {
+  buildDashboardMyWorkDeadlineWhere,
+} from '../../../shared/access-control/counsel-involvement.where';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { todayInTimezone } from '../../../shared/utils/date-boundary.util';
 
-export interface DashboardSummary {
+export interface DashboardMetrics {
   openCases: number;
   activeContracts: number;
   pendingNotices: number;
   overdueDeadlines: number;
   todayDeadlines: number;
   myOpenTasks: number;
+}
+
+export interface DashboardSummary {
+  canViewAll: boolean;
+  all: DashboardMetrics;
+  my: DashboardMetrics;
 }
 
 @Injectable()
@@ -37,9 +45,55 @@ export class GetDashboardSummaryUseCase {
     const timeZone =
       this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE) ?? 'UTC';
     const today = todayInTimezone(timeZone);
-    const ownerScope = this.accessControl.buildOwnerListFilter(user);
-    const deadlineScope = this.buildDeadlineScope(user);
+    const canViewAll = this.accessControl.canViewAll(user);
+    // My Work matters = owned by me. Deadlines/tasks = assigned to me.
+    const myCaseScope: Prisma.LegalCaseWhereInput = { ownerId: user.id };
+    const myContractScope: Prisma.ContractWhereInput = { ownerId: user.id };
+    const myNoticeScope: Prisma.LegalNoticeWhereInput = { ownerId: user.id };
+    const myDeadlineScope = buildDashboardMyWorkDeadlineWhere(user.id);
 
+    const [all, my] = await Promise.all([
+      canViewAll
+        ? this.countMetrics({}, {}, {}, {}, today, undefined)
+        : Promise.resolve(this.emptyMetrics()),
+      this.countMetrics(
+        myCaseScope,
+        myContractScope,
+        myNoticeScope,
+        myDeadlineScope,
+        today,
+        user.id,
+      ),
+    ]);
+
+    const summary: DashboardSummary = {
+      canViewAll,
+      all,
+      my,
+    };
+
+    return buildSingleResponse(summary);
+  }
+
+  private emptyMetrics(): DashboardMetrics {
+    return {
+      openCases: 0,
+      activeContracts: 0,
+      pendingNotices: 0,
+      overdueDeadlines: 0,
+      todayDeadlines: 0,
+      myOpenTasks: 0,
+    };
+  }
+
+  private async countMetrics(
+    caseScope: Prisma.LegalCaseWhereInput,
+    contractScope: Prisma.ContractWhereInput,
+    noticeScope: Prisma.LegalNoticeWhereInput,
+    deadlineScope: Prisma.DeadlineWhereInput,
+    today: Date,
+    taskAssigneeId?: string,
+  ): Promise<DashboardMetrics> {
     const [
       openCases,
       activeContracts,
@@ -52,21 +106,21 @@ export class GetDashboardSummaryUseCase {
         where: {
           deletedAt: null,
           status: { in: [CaseStatus.OPEN, CaseStatus.IN_PROGRESS] },
-          ...ownerScope,
+          ...caseScope,
         },
       }),
       this.prisma.contract.count({
         where: {
           deletedAt: null,
           status: ContractStatus.ACTIVE,
-          ...ownerScope,
+          ...contractScope,
         },
       }),
       this.prisma.legalNotice.count({
         where: {
           deletedAt: null,
           status: { in: [NoticeStatus.RECEIVED, NoticeStatus.UNDER_REVIEW] },
-          ...ownerScope,
+          ...noticeScope,
         },
       }),
       this.prisma.deadline.count({
@@ -86,38 +140,19 @@ export class GetDashboardSummaryUseCase {
       this.prisma.task.count({
         where: {
           deletedAt: null,
-          assigneeId: user.id,
           status: { in: [TaskStatus.TODO, TaskStatus.IN_PROGRESS] },
+          ...(taskAssigneeId ? { assigneeId: taskAssigneeId } : {}),
         },
       }),
     ]);
 
-    const summary: DashboardSummary = {
+    return {
       openCases,
       activeContracts,
       pendingNotices,
       overdueDeadlines,
       todayDeadlines,
       myOpenTasks,
-    };
-
-    return buildSingleResponse(summary);
-  }
-
-  private buildDeadlineScope(
-    user: AuthenticatedUser,
-  ): Prisma.DeadlineWhereInput {
-    if (user.role !== UserRole.LEGAL_COUNSEL) {
-      return {};
-    }
-
-    return {
-      OR: [
-        { assigneeId: user.id },
-        { legalCase: { ownerId: user.id, deletedAt: null } },
-        { contract: { ownerId: user.id, deletedAt: null } },
-        { notice: { ownerId: user.id, deletedAt: null } },
-      ],
     };
   }
 }

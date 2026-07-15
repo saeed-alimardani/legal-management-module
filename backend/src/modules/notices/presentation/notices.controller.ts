@@ -67,7 +67,7 @@ export class NoticesController {
   }
 
   @Post()
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({
     summary: 'Register a notice and auto-create its response deadline',
   })
@@ -98,7 +98,7 @@ export class NoticesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Update notice fields or status' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(

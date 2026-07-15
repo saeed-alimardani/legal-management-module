@@ -31,3 +31,8 @@ export interface ListUsersFilters {
   page: number;
   limit: number;
 }
+
+export interface UserDirectoryEntry {
+  id: string;
+  fullName: string;
+}

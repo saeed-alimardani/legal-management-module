@@ -1,0 +1,20 @@
+import type { UserRole } from './types';
+
+export const CASE_TYPES = ['LITIGATION', 'ARBITRATION', 'REGULATORY', 'INTERNAL', 'OTHER'];
+export const CASE_STATUSES = ['OPEN', 'IN_PROGRESS', 'ON_HOLD', 'CLOSED'];
+export const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+export const PARTY_TYPES = ['PLAINTIFF', 'DEFENDANT', 'THIRD_PARTY', 'INTERNAL'];
+export const CONTRACT_TYPES = ['NDA', 'MSA', 'EMPLOYMENT', 'VENDOR', 'LEASE', 'OTHER'];
+export const CONTRACT_STATUSES = ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED', 'UNDER_REVIEW'];
+export const NOTICE_STATUSES = ['RECEIVED', 'UNDER_REVIEW', 'RESPONDED', 'CLOSED', 'OVERDUE'];
+export const DEADLINE_STATUSES = ['PENDING', 'COMPLETED', 'CANCELLED'];
+export const DEADLINE_VIEWS = ['upcoming', 'overdue', 'today', 'assigned-to-me'];
+export const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE', 'CANCELLED'];
+export const DOCUMENT_TYPES = ['CONTRACT', 'EVIDENCE', 'CORRESPONDENCE', 'FILING', 'OTHER'];
+export const FINANCIAL_TYPES = ['EXPENSE', 'INVOICE', 'PAYMENT', 'OTHER'];
+export const REMINDER_STATUSES = ['PENDING', 'SENT', 'DISMISSED'];
+export const USER_ROLES: UserRole[] = ['LEGAL_ADMIN', 'LEGAL_MANAGER', 'LEGAL_COUNSEL', 'VIEWER'];
+export const ENTITY_TYPES = [
+  'USER', 'CASE', 'CONTRACT', 'NOTICE', 'DEADLINE', 'TASK',
+  'DOCUMENT', 'DISCUSSION', 'FINANCIAL_RECORD', 'REMINDER',
+];

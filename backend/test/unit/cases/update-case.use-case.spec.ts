@@ -22,6 +22,13 @@ describe('UpdateCaseUseCase', () => {
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
     email: 'counsel@legal.local',
@@ -77,13 +84,13 @@ describe('UpdateCaseUseCase', () => {
   });
 
   it('updates case fields for owner', async () => {
-    const result = await useCase.execute(counsel, existingCase.id, {
+    const result = await useCase.execute(manager, existingCase.id, {
       title: 'Updated Title',
     });
 
     expect(result.data.title).toBe('Updated Title');
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.UPDATED,
       entityType: EntityType.CASE,
       entityId: existingCase.id,
@@ -92,12 +99,12 @@ describe('UpdateCaseUseCase', () => {
   });
 
   it('logs STATUS_CHANGED when status changes', async () => {
-    await useCase.execute(counsel, existingCase.id, {
+    await useCase.execute(manager, existingCase.id, {
       status: CaseStatus.IN_PROGRESS,
     });
 
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.STATUS_CHANGED,
       entityType: EntityType.CASE,
       entityId: existingCase.id,
@@ -110,7 +117,7 @@ describe('UpdateCaseUseCase', () => {
   });
 
   it('skips activity log when no fields changed', async () => {
-    await useCase.execute(counsel, existingCase.id, {
+    await useCase.execute(manager, existingCase.id, {
       title: existingCase.title,
     });
 
@@ -127,7 +134,7 @@ describe('UpdateCaseUseCase', () => {
     caseRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', { title: 'X' }),
+      useCase.execute(manager, 'missing', { title: 'X' }),
     ).rejects.toThrow(NotFoundException);
   });
 });

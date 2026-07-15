@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { buildCounselContractWhere } from '../../../shared/access-control/counsel-involvement.where';
 import {
   formatReferenceCode,
   getNextReferenceSequence,
@@ -63,6 +64,18 @@ export class PrismaContractRepository {
         deletedAt: null,
       },
     });
+  }
+
+  async isUserInvolved(contractId: string, userId: string): Promise<boolean> {
+    const count = await this.prisma.contract.count({
+      where: {
+        id: contractId,
+        deletedAt: null,
+        ...buildCounselContractWhere(userId),
+      },
+    });
+
+    return count > 0;
   }
 
   async list(

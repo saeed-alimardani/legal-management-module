@@ -6,6 +6,14 @@ import {
 import { EntityType } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
+import {
+  buildCounselCaseWhere,
+  buildCounselContractWhere,
+  buildCounselDiscussionWhere,
+  buildCounselDocumentWhere,
+  buildCounselFinancialRecordWhere,
+  buildCounselNoticeWhere,
+} from '../../../shared/access-control/counsel-involvement.where';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildPaginatedResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
@@ -27,6 +35,8 @@ export class ListActivityLogsUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: ListActivityLogsCommand) {
+    this.accessControl.assertCanViewActivityLogs(user);
+
     const entityScoped =
       command.entityType !== undefined && command.entityId !== undefined;
 
@@ -58,10 +68,7 @@ export class ListActivityLogsUseCase {
     entityType: EntityType,
     entityId: string,
   ): Promise<void> {
-    if (
-      this.accessControl.isAdminOrManager(user) ||
-      this.accessControl.isViewer(user)
-    ) {
+    if (this.accessControl.isAdminOrManager(user)) {
       return;
     }
 
@@ -74,9 +81,12 @@ export class ListActivityLogsUseCase {
         if (!legalCase) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, {
-          ownerId: legalCase.ownerId,
-        });
+        const involved = await this.isUserInvolvedInCase(entityId, user.id);
+        this.accessControl.assertCanViewMatter(
+          user,
+          legalCase.ownerId,
+          involved,
+        );
         return;
       }
       case EntityType.CONTRACT: {
@@ -87,9 +97,8 @@ export class ListActivityLogsUseCase {
         if (!contract) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, {
-          ownerId: contract.ownerId,
-        });
+        const involved = await this.isUserInvolvedInContract(entityId, user.id);
+        this.accessControl.assertCanViewMatter(user, contract.ownerId, involved);
         return;
       }
       case EntityType.NOTICE: {
@@ -100,16 +109,17 @@ export class ListActivityLogsUseCase {
         if (!notice) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, { ownerId: notice.ownerId });
+        const involved = await this.isUserInvolvedInNotice(entityId, user.id);
+        this.accessControl.assertCanViewMatter(user, notice.ownerId, involved);
         return;
       }
       case EntityType.DEADLINE: {
         const deadline = await this.prisma.deadline.findUnique({
           where: { id: entityId },
           include: {
-            legalCase: { select: { ownerId: true, deletedAt: true } },
-            contract: { select: { ownerId: true, deletedAt: true } },
-            notice: { select: { ownerId: true, deletedAt: true } },
+            legalCase: { select: { id: true, ownerId: true, deletedAt: true } },
+            contract: { select: { id: true, ownerId: true, deletedAt: true } },
+            notice: { select: { id: true, ownerId: true, deletedAt: true } },
           },
         });
         if (!deadline) {
@@ -119,19 +129,19 @@ export class ListActivityLogsUseCase {
         if (!ownerId) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, {
-          ownerId,
-          assigneeId: deadline.assigneeId,
-        });
+        const involved =
+          deadline.assigneeId === user.id ||
+          (await this.isUserInvolvedInParentMatter(deadline, user.id));
+        this.accessControl.assertCanViewMatter(user, ownerId, involved);
         return;
       }
       case EntityType.TASK: {
         const task = await this.prisma.task.findUnique({
           where: { id: entityId },
           include: {
-            legalCase: { select: { ownerId: true, deletedAt: true } },
-            contract: { select: { ownerId: true, deletedAt: true } },
-            notice: { select: { ownerId: true, deletedAt: true } },
+            legalCase: { select: { id: true, ownerId: true, deletedAt: true } },
+            contract: { select: { id: true, ownerId: true, deletedAt: true } },
+            notice: { select: { id: true, ownerId: true, deletedAt: true } },
           },
         });
         if (!task) {
@@ -141,19 +151,20 @@ export class ListActivityLogsUseCase {
         if (!ownerId) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, {
-          ownerId,
-          assigneeId: task.assigneeId,
-        });
+        const involved =
+          task.assigneeId === user.id ||
+          task.createdById === user.id ||
+          (await this.isUserInvolvedInParentMatter(task, user.id));
+        this.accessControl.assertCanViewMatter(user, ownerId, involved);
         return;
       }
       case EntityType.DOCUMENT: {
         const document = await this.prisma.document.findFirst({
           where: { id: entityId, deletedAt: null },
           include: {
-            legalCase: { select: { ownerId: true, deletedAt: true } },
-            contract: { select: { ownerId: true, deletedAt: true } },
-            notice: { select: { ownerId: true, deletedAt: true } },
+            legalCase: { select: { id: true, ownerId: true, deletedAt: true } },
+            contract: { select: { id: true, ownerId: true, deletedAt: true } },
+            notice: { select: { id: true, ownerId: true, deletedAt: true } },
           },
         });
         if (!document) {
@@ -163,16 +174,17 @@ export class ListActivityLogsUseCase {
         if (!ownerId) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, { ownerId });
+        const involved = await this.isUserInvolvedInDocument(entityId, user.id);
+        this.accessControl.assertCanViewMatter(user, ownerId, involved);
         return;
       }
       case EntityType.DISCUSSION: {
         const discussion = await this.prisma.discussion.findFirst({
           where: { id: entityId, deletedAt: null },
           include: {
-            legalCase: { select: { ownerId: true, deletedAt: true } },
-            contract: { select: { ownerId: true, deletedAt: true } },
-            notice: { select: { ownerId: true, deletedAt: true } },
+            legalCase: { select: { id: true, ownerId: true, deletedAt: true } },
+            contract: { select: { id: true, ownerId: true, deletedAt: true } },
+            notice: { select: { id: true, ownerId: true, deletedAt: true } },
           },
         });
         if (!discussion) {
@@ -182,7 +194,11 @@ export class ListActivityLogsUseCase {
         if (!ownerId) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, { ownerId });
+        const involved = await this.isUserInvolvedInDiscussion(
+          entityId,
+          user.id,
+        );
+        this.accessControl.assertCanViewMatter(user, ownerId, involved);
         return;
       }
       case EntityType.FINANCIAL_RECORD: {
@@ -201,7 +217,11 @@ export class ListActivityLogsUseCase {
         if (!ownerId) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, { ownerId });
+        const involved = await this.isUserInvolvedInFinancialRecord(
+          entityId,
+          user.id,
+        );
+        this.accessControl.assertCanViewMatter(user, ownerId, involved);
         return;
       }
       case EntityType.REMINDER: {
@@ -210,9 +230,15 @@ export class ListActivityLogsUseCase {
           include: {
             deadline: {
               include: {
-                legalCase: { select: { ownerId: true, deletedAt: true } },
-                contract: { select: { ownerId: true, deletedAt: true } },
-                notice: { select: { ownerId: true, deletedAt: true } },
+                legalCase: {
+                  select: { id: true, ownerId: true, deletedAt: true },
+                },
+                contract: {
+                  select: { id: true, ownerId: true, deletedAt: true },
+                },
+                notice: {
+                  select: { id: true, ownerId: true, deletedAt: true },
+                },
               },
             },
           },
@@ -224,10 +250,13 @@ export class ListActivityLogsUseCase {
         if (!ownerId) {
           throw new NotFoundException('Entity not found');
         }
-        this.accessControl.assertCanView(user, {
-          ownerId,
-          assigneeId: reminder.deadline.assigneeId,
-        });
+        const involved =
+          reminder.deadline.assigneeId === user.id ||
+          (await this.isUserInvolvedInParentMatter(
+            reminder.deadline,
+            user.id,
+          ));
+        this.accessControl.assertCanViewMatter(user, ownerId, involved);
         return;
       }
       default:
@@ -265,5 +294,105 @@ export class ListActivityLogsUseCase {
       return entity.contract.ownerId;
     }
     return null;
+  }
+
+  private async isUserInvolvedInCase(
+    caseId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.legalCase.count({
+      where: { id: caseId, deletedAt: null, ...buildCounselCaseWhere(userId) },
+    });
+    return count > 0;
+  }
+
+  private async isUserInvolvedInContract(
+    contractId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.contract.count({
+      where: {
+        id: contractId,
+        deletedAt: null,
+        ...buildCounselContractWhere(userId),
+      },
+    });
+    return count > 0;
+  }
+
+  private async isUserInvolvedInNotice(
+    noticeId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.legalNotice.count({
+      where: {
+        id: noticeId,
+        deletedAt: null,
+        ...buildCounselNoticeWhere(userId),
+      },
+    });
+    return count > 0;
+  }
+
+  private async isUserInvolvedInDocument(
+    documentId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.document.count({
+      where: {
+        id: documentId,
+        deletedAt: null,
+        ...buildCounselDocumentWhere(userId),
+      },
+    });
+    return count > 0;
+  }
+
+  private async isUserInvolvedInDiscussion(
+    discussionId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.discussion.count({
+      where: {
+        id: discussionId,
+        deletedAt: null,
+        ...buildCounselDiscussionWhere(userId),
+      },
+    });
+    return count > 0;
+  }
+
+  private async isUserInvolvedInFinancialRecord(
+    recordId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const count = await this.prisma.financialRecord.count({
+      where: {
+        id: recordId,
+        deletedAt: null,
+        ...buildCounselFinancialRecordWhere(userId),
+      },
+    });
+    return count > 0;
+  }
+
+  private async isUserInvolvedInParentMatter(
+    entity: {
+      legalCase?: { id: string; ownerId: string; deletedAt: Date | null } | null;
+      contract?: { id: string; ownerId: string; deletedAt: Date | null } | null;
+      notice?: { id: string; ownerId: string; deletedAt: Date | null } | null;
+    },
+    userId: string,
+  ): Promise<boolean> {
+    if (entity.legalCase && entity.legalCase.deletedAt === null) {
+      return this.isUserInvolvedInCase(entity.legalCase.id, userId);
+    }
+    if (entity.contract && entity.contract.deletedAt === null) {
+      return this.isUserInvolvedInContract(entity.contract.id, userId);
+    }
+    if (entity.notice && entity.notice.deletedAt === null) {
+      return this.isUserInvolvedInNotice(entity.notice.id, userId);
+    }
+    return false;
   }
 }

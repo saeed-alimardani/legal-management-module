@@ -102,10 +102,12 @@ describe('ListTasksUseCase', () => {
     expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {});
   });
 
-  it('passes empty scope when user is viewer', async () => {
+  it('passes counselUserId scope when user is viewer', async () => {
     await useCase.execute(viewer, { page: 1, limit: 10 });
 
-    expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {});
+    expect(taskRepository.list).toHaveBeenCalledWith(expect.any(Object), {
+      counselUserId: viewer.id,
+    });
   });
 
   it('forwards all filter fields to the repository', async () => {

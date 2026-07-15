@@ -80,7 +80,7 @@ export class CasesController {
   }
 
   @Post()
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Create a new case with optional parties' })
   @ApiForbiddenResponse({ description: 'Insufficient role permissions' })
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateCaseDto) {
@@ -124,7 +124,7 @@ export class CasesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Update case fields or status' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(
@@ -189,7 +189,7 @@ export class CasesController {
   }
 
   @Post(':id/parties')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Add a party to a case' })
   addParty(
     @CurrentUser() user: AuthenticatedUser,
@@ -200,7 +200,7 @@ export class CasesController {
   }
 
   @Patch(':id/parties/:partyId')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Update a case party' })
   updateParty(
     @CurrentUser() user: AuthenticatedUser,
@@ -212,7 +212,7 @@ export class CasesController {
   }
 
   @Delete(':id/parties/:partyId')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove a party from a case' })
   deleteParty(

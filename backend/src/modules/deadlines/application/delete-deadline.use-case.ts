@@ -16,8 +16,6 @@ export class DeleteDeadlineUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, deadlineId: string) {
-    this.accessControl.assertCanMutate(user);
-
     const existing = await this.deadlineRepository.findById(deadlineId);
 
     if (!existing) {
@@ -31,7 +29,7 @@ export class DeleteDeadlineUseCase {
     }
 
     this.accessControl.assertCanCancelDeadline(user, {
-      ownerId: parentOwnerId,
+      createdById: existing.createdById,
     });
 
     await this.deadlineRepository.cancel(deadlineId);

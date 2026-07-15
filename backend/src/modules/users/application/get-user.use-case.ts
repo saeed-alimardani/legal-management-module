@@ -16,7 +16,7 @@ export class GetUserUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, userId: string) {
-    this.assertAdminOrManager(user);
+    this.accessControl.assertCanManageUsers(user);
 
     const found = await this.userRepository.findById(userId);
 
@@ -25,11 +25,5 @@ export class GetUserUseCase {
     }
 
     return buildSingleResponse(found);
-  }
-
-  private assertAdminOrManager(user: AuthenticatedUser): void {
-    if (!this.accessControl.isAdminOrManager(user)) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
   }
 }

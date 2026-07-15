@@ -57,7 +57,7 @@ describe('ListNoticesUseCase', () => {
     );
   });
 
-  it('scopes counsel list to own notices', async () => {
+  it('scopes counsel list to owned notices only', async () => {
     await useCase.execute(counsel, { page: 1, limit: 20 });
 
     expect(noticeRepository.list).toHaveBeenCalledWith(

@@ -27,8 +27,7 @@ export class CreateUserUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateUserCommand) {
-    this.assertAdminOrManager(user);
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageUsers(user);
 
     const existing = await this.userRepository.findByEmail(command.email);
 
@@ -58,11 +57,5 @@ export class CreateUserUseCase {
     });
 
     return buildSingleResponse(created);
-  }
-
-  private assertAdminOrManager(user: AuthenticatedUser): void {
-    if (!this.accessControl.isAdminOrManager(user)) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
   }
 }

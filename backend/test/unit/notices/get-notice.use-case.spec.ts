@@ -8,7 +8,9 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 
 describe('GetNoticeUseCase', () => {
   let useCase: GetNoticeUseCase;
-  let noticeRepository: jest.Mocked<Pick<PrismaNoticeRepository, 'findById'>>;
+  let noticeRepository: jest.Mocked<
+    Pick<PrismaNoticeRepository, 'findById' | 'isUserInvolved'>
+  >;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -51,6 +53,7 @@ describe('GetNoticeUseCase', () => {
   beforeEach(() => {
     noticeRepository = {
       findById: jest.fn().mockResolvedValue(notice),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     useCase = new GetNoticeUseCase(

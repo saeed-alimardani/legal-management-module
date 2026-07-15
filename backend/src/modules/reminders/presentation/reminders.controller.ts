@@ -60,6 +60,7 @@ export class RemindersController {
       page: query.page ?? 1,
       limit: query.limit ?? 20,
       view: query.view,
+      status: query.status,
     });
   }
 

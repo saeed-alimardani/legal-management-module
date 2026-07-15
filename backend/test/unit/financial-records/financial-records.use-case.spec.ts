@@ -22,6 +22,8 @@ import { AccessControlService } from '../../../src/shared/access-control/access-
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
 import { createMockConfigService } from '../../helpers/config.helper';
+import { MatterInvolvementService } from '../../../src/shared/access-control/matter-involvement.service';
+import { createMockMatterInvolvement } from '../../helpers/rbac.helper';
 
 describe('CreateFinancialRecordUseCase', () => {
   let useCase: CreateFinancialRecordUseCase;
@@ -84,6 +86,7 @@ describe('CreateFinancialRecordUseCase', () => {
     useCase = new CreateFinancialRecordUseCase(
       financialRecordRepository as unknown as PrismaFinancialRecordRepository,
       new AccessControlService(),
+      createMockMatterInvolvement() as unknown as MatterInvolvementService,
       activityLogService as unknown as ActivityLogService,
       createMockConfigService() as unknown as ConfigService,
     );
@@ -139,6 +142,15 @@ describe('CreateFinancialRecordUseCase', () => {
     financialRecordRepository.findParentOwner.mockResolvedValue({
       ownerId: otherCounsel.id,
     });
+    const matterInvolvement = createMockMatterInvolvement();
+    matterInvolvement.isUserInvolvedInParent.mockResolvedValue(false);
+    useCase = new CreateFinancialRecordUseCase(
+      financialRecordRepository as unknown as PrismaFinancialRecordRepository,
+      new AccessControlService(),
+      matterInvolvement as unknown as MatterInvolvementService,
+      activityLogService as unknown as ActivityLogService,
+      createMockConfigService() as unknown as ConfigService,
+    );
 
     await expect(
       useCase.execute(counsel, {
@@ -146,7 +158,7 @@ describe('CreateFinancialRecordUseCase', () => {
         amount: 1000,
         type: FinancialRecordType.EXPENSE,
         recordDate: new Date(),
-        caseId: 'case-2',
+        caseId: 'case-1',
       }),
     ).rejects.toThrow(ForbiddenException);
   });
@@ -167,7 +179,7 @@ describe('CreateFinancialRecordUseCase', () => {
 describe('GetFinancialRecordUseCase', () => {
   let useCase: GetFinancialRecordUseCase;
   let financialRecordRepository: jest.Mocked<
-    Pick<PrismaFinancialRecordRepository, 'findById'>
+    Pick<PrismaFinancialRecordRepository, 'findById' | 'isUserInvolved'>
   >;
 
   const counsel: AuthenticatedUser = {
@@ -207,6 +219,7 @@ describe('GetFinancialRecordUseCase', () => {
   beforeEach(() => {
     financialRecordRepository = {
       findById: jest.fn().mockResolvedValue(record),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     useCase = new GetFinancialRecordUseCase(
@@ -302,7 +315,7 @@ describe('ListFinancialRecordsUseCase', () => {
         page: 1,
         limit: 20,
       },
-      { ownerId: counsel.id },
+      { counselUserId: counsel.id },
     );
   });
 });

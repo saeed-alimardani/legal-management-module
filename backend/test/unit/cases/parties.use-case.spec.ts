@@ -23,6 +23,13 @@ describe('ListPartiesUseCase', () => {
     Pick<PrismaCaseRepository, 'findById' | 'listParties'>
   >;
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
     email: 'counsel@legal.local',
@@ -78,7 +85,7 @@ describe('ListPartiesUseCase', () => {
   });
 
   it('returns parties for authorized user', async () => {
-    const result = await useCase.execute(counsel, legalCase.id);
+    const result = await useCase.execute(manager, legalCase.id);
 
     expect(result.data).toEqual(parties);
   });
@@ -92,7 +99,7 @@ describe('ListPartiesUseCase', () => {
   it('throws when case not found', async () => {
     caseRepository.findById.mockResolvedValue(null);
 
-    await expect(useCase.execute(counsel, 'missing')).rejects.toThrow(
+    await expect(useCase.execute(manager, 'missing')).rejects.toThrow(
       NotFoundException,
     );
   });
@@ -104,6 +111,13 @@ describe('AddPartyUseCase', () => {
     Pick<PrismaCaseRepository, 'findById' | 'addParty'>
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -156,7 +170,7 @@ describe('AddPartyUseCase', () => {
   });
 
   it('adds party and logs activity', async () => {
-    const result = await useCase.execute(counsel, legalCase.id, {
+    const result = await useCase.execute(manager, legalCase.id, {
       name: newParty.name,
       partyType: newParty.partyType,
       contactInfo: newParty.contactInfo,
@@ -164,7 +178,7 @@ describe('AddPartyUseCase', () => {
 
     expect(result.data).toEqual(newParty);
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.UPDATED,
       entityType: EntityType.CASE,
       entityId: legalCase.id,
@@ -188,6 +202,13 @@ describe('UpdatePartyUseCase', () => {
     >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -254,14 +275,14 @@ describe('UpdatePartyUseCase', () => {
   });
 
   it('updates party and logs activity', async () => {
-    const result = await useCase.execute(counsel, legalCase.id, existingParty.id, {
+    const result = await useCase.execute(manager, legalCase.id, existingParty.id, {
       name: 'Acme Corp',
       contactInfo: 'contact@acme.com',
     });
 
     expect(result.data).toEqual(updatedParty);
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.UPDATED,
       entityType: EntityType.CASE,
       entityId: legalCase.id,
@@ -287,7 +308,7 @@ describe('UpdatePartyUseCase', () => {
     caseRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', existingParty.id, {
+      useCase.execute(manager, 'missing', existingParty.id, {
         name: 'Acme Corp',
       }),
     ).rejects.toThrow(NotFoundException);
@@ -297,7 +318,7 @@ describe('UpdatePartyUseCase', () => {
     caseRepository.findPartyById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, legalCase.id, 'missing', {
+      useCase.execute(manager, legalCase.id, 'missing', {
         name: 'Acme Corp',
       }),
     ).rejects.toThrow(NotFoundException);
@@ -313,6 +334,13 @@ describe('DeletePartyUseCase', () => {
     >
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -373,7 +401,7 @@ describe('DeletePartyUseCase', () => {
   });
 
   it('deletes party and logs activity', async () => {
-    const result = await useCase.execute(counsel, legalCase.id, existingParty.id);
+    const result = await useCase.execute(manager, legalCase.id, existingParty.id);
 
     expect(result.data).toEqual({ id: existingParty.id, deleted: true });
     expect(caseRepository.deleteParty).toHaveBeenCalledWith(
@@ -381,7 +409,7 @@ describe('DeletePartyUseCase', () => {
       existingParty.id,
     );
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.UPDATED,
       entityType: EntityType.CASE,
       entityId: legalCase.id,
@@ -404,7 +432,7 @@ describe('DeletePartyUseCase', () => {
     caseRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', existingParty.id),
+      useCase.execute(manager, 'missing', existingParty.id),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -412,7 +440,7 @@ describe('DeletePartyUseCase', () => {
     caseRepository.findPartyById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, legalCase.id, 'missing'),
+      useCase.execute(manager, legalCase.id, 'missing'),
     ).rejects.toThrow(NotFoundException);
   });
 });

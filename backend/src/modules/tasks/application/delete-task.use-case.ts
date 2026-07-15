@@ -16,7 +16,7 @@ export class DeleteTaskUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, taskId: string) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageCoreEntities(user);
 
     const existing = await this.taskRepository.findById(taskId);
 

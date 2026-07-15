@@ -39,7 +39,7 @@ export class CreateTaskUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateTaskCommand) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageCoreEntities(user);
 
     if (countParentRefs(command) !== 1) {
       throw new BadRequestException(

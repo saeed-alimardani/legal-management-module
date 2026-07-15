@@ -35,7 +35,7 @@ export class CreateCaseUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateCaseCommand) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageCoreEntities(user);
 
     const ownerId = await this.resolveOwnerId(user, command.ownerId);
     const referenceCode = await this.caseRepository.generateNextReferenceCode();

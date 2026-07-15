@@ -46,6 +46,7 @@ export interface UpdateReminderInput {
 
 export interface ListRemindersFilters {
   view?: ReminderView;
+  status?: ReminderStatus;
   now: Date;
   currentUserId: string;
   page: number;

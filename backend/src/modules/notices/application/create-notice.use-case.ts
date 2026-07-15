@@ -53,7 +53,7 @@ export class CreateNoticeUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateNoticeCommand) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageCoreEntities(user);
 
     const receivedDate = toUtcDateOnly(command.receivedDate);
     const responseDeadline = toUtcDateOnly(command.responseDeadline);

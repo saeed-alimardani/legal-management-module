@@ -32,7 +32,11 @@ export class GetDiscussionUseCase {
       throw new NotFoundException('Discussion not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: parentOwnerId });
+    const involved = await this.discussionRepository.isUserInvolved(
+      discussionId,
+      user.id,
+    );
+    this.accessControl.assertCanViewMatter(user, parentOwnerId, involved);
 
     const timeZone = resolveResponseTimeZone(
       this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),

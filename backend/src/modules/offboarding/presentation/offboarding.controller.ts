@@ -33,7 +33,7 @@ export class OffboardingController {
 
   @Post('transfer')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
+  @Roles(UserRole.LEGAL_ADMIN)
   @ApiOperation({
     summary: 'Bulk transfer ownership and assignments between users',
   })

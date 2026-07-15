@@ -25,6 +25,13 @@ describe('UpdateContractUseCase', () => {
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
     email: 'counsel@legal.local',
@@ -84,14 +91,14 @@ describe('UpdateContractUseCase', () => {
   });
 
   it('updates fields for owner and logs UPDATED', async () => {
-    const result = await useCase.execute(counsel, existing.id, {
+    const result = await useCase.execute(manager, existing.id, {
       title: 'Updated Title',
       keyTerms: 'New terms',
     });
 
     expect(result.data.title).toBe('Updated Title');
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.UPDATED,
       entityType: EntityType.CONTRACT,
       entityId: existing.id,
@@ -102,7 +109,7 @@ describe('UpdateContractUseCase', () => {
   });
 
   it('logs STATUS_CHANGED when status changes', async () => {
-    await useCase.execute(counsel, existing.id, {
+    await useCase.execute(manager, existing.id, {
       status: ContractStatus.ACTIVE,
     });
 
@@ -118,7 +125,7 @@ describe('UpdateContractUseCase', () => {
   });
 
   it('skips activity log when no fields change', async () => {
-    await useCase.execute(counsel, existing.id, {
+    await useCase.execute(manager, existing.id, {
       title: existing.title,
     });
 
@@ -127,7 +134,7 @@ describe('UpdateContractUseCase', () => {
 
   it('rejects invalid date range against existing effectiveDate', async () => {
     await expect(
-      useCase.execute(counsel, existing.id, {
+      useCase.execute(manager, existing.id, {
         expirationDate: new Date('2025-01-01T00:00:00.000Z'),
       }),
     ).rejects.toThrow(BadRequestException);
@@ -145,7 +152,7 @@ describe('UpdateContractUseCase', () => {
     contractRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', { title: 'X' }),
+      useCase.execute(manager, 'missing', { title: 'X' }),
     ).rejects.toThrow(NotFoundException);
   });
 });

@@ -25,7 +25,8 @@ export class GetNoticeUseCase {
       throw new NotFoundException('Notice not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: notice.ownerId });
+    const involved = await this.noticeRepository.isUserInvolved(noticeId, user.id);
+    this.accessControl.assertCanViewMatter(user, notice.ownerId, involved);
 
     const timeZone = resolveNoticeResponseTimeZone(
       this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),

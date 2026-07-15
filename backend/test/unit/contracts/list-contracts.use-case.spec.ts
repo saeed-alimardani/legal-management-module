@@ -68,7 +68,7 @@ describe('ListContractsUseCase', () => {
     );
   });
 
-  it('scopes counsel list to own contracts', async () => {
+  it('scopes counsel list to owned contracts only', async () => {
     await useCase.execute(counsel, { page: 1, limit: 20 });
 
     expect(contractRepository.list).toHaveBeenCalledWith(
@@ -77,17 +77,20 @@ describe('ListContractsUseCase', () => {
     );
   });
 
-  it('does not scope admin or viewer list', async () => {
+  it('does not scope admin list', async () => {
     await useCase.execute(admin, { page: 1, limit: 10 });
     expect(contractRepository.list).toHaveBeenCalledWith(
       { page: 1, limit: 10 },
       {},
     );
+  });
 
+  it('scopes viewer list to owned contracts only', async () => {
     await useCase.execute(viewer, { page: 1, limit: 10 });
-    expect(contractRepository.list).toHaveBeenLastCalledWith(
+
+    expect(contractRepository.list).toHaveBeenCalledWith(
       { page: 1, limit: 10 },
-      {},
+      { ownerId: viewer.id },
     );
   });
 

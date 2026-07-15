@@ -31,7 +31,11 @@ export class GetDocumentUseCase {
       throw new NotFoundException('Document not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: parentOwnerId });
+    const involved = await this.documentRepository.isUserInvolved(
+      documentId,
+      user.id,
+    );
+    this.accessControl.assertCanViewMatter(user, parentOwnerId, involved);
 
     const timeZone = getDocumentResponseTimeZone(this.configService);
     return buildSingleResponse(toDocumentResponse(document, timeZone));

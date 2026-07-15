@@ -16,7 +16,7 @@ export class ListCasesUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, filters: ListCasesFilters) {
-    const scope = this.accessControl.buildOwnerListFilter(user);
+    const scope = this.accessControl.buildCaseListScope(user);
     const { items, total } = await this.caseRepository.list(filters, scope);
     const timeZone = getCaseResponseTimeZone(this.configService);
 

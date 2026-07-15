@@ -26,6 +26,13 @@ describe('UpdateNoticeUseCase', () => {
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
     email: 'counsel@legal.local',
@@ -85,7 +92,7 @@ describe('UpdateNoticeUseCase', () => {
   });
 
   it('updates fields for owner and logs UPDATED', async () => {
-    const result = await useCase.execute(counsel, existing.id, {
+    const result = await useCase.execute(manager, existing.id, {
       title: 'Updated',
       description: 'Notes',
     });
@@ -95,7 +102,7 @@ describe('UpdateNoticeUseCase', () => {
       /^\d{4}\/\d{2}\/\d{2}$/,
     );
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.UPDATED,
       entityType: EntityType.NOTICE,
       entityId: existing.id,
@@ -106,7 +113,7 @@ describe('UpdateNoticeUseCase', () => {
   });
 
   it('logs STATUS_CHANGED when status changes', async () => {
-    await useCase.execute(counsel, existing.id, {
+    await useCase.execute(manager, existing.id, {
       status: NoticeStatus.RESPONDED,
     });
 
@@ -123,7 +130,7 @@ describe('UpdateNoticeUseCase', () => {
 
   it('rejects when responseDeadline is before receivedDate', async () => {
     await expect(
-      useCase.execute(counsel, existing.id, {
+      useCase.execute(manager, existing.id, {
         responseDeadline: new Date('2026-06-01T00:00:00.000Z'),
       }),
     ).rejects.toThrow(BadRequestException);
@@ -135,7 +142,7 @@ describe('UpdateNoticeUseCase', () => {
     noticeRepository.relatedCaseExists.mockResolvedValue(false);
 
     await expect(
-      useCase.execute(counsel, existing.id, {
+      useCase.execute(manager, existing.id, {
         relatedCaseId: 'missing-case',
       }),
     ).rejects.toThrow(NotFoundException);
@@ -151,7 +158,7 @@ describe('UpdateNoticeUseCase', () => {
     noticeRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', { title: 'X' }),
+      useCase.execute(manager, 'missing', { title: 'X' }),
     ).rejects.toThrow(NotFoundException);
   });
 });

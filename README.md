@@ -1,6 +1,6 @@
 # Legal Management Module
 
-Internal legal operations API for managing cases, contracts, notices, deadlines, reminders, tasks, documents, discussions, and financial records. Built with NestJS, PostgreSQL, Prisma, and JWT authentication.
+Internal legal operations platform for managing cases, contracts, notices, deadlines, reminders, tasks, documents, discussions, and financial records. **Backend:** NestJS, PostgreSQL, Prisma, JWT. **Frontend:** Next.js App Router.
 
 > **Development notes:** [AI_USAGE.md](./AI_USAGE.md) — how AI tools were used in this project.
 
@@ -30,12 +30,9 @@ Internal legal operations API for managing cases, contracts, notices, deadlines,
 
 ## Stack
 
-- **Framework:** NestJS 10
-- **Database:** PostgreSQL 16 + Prisma ORM
-- **Auth:** JWT (Passport) + bcrypt
-- **Docs:** Swagger at `/api/docs`
-- **Logging:** Pino (nestjs-pino)
-- **Architecture:** Lightweight DDD + Hexagonal (4 layers per module)
+- **Backend:** NestJS 10, PostgreSQL 16, Prisma ORM, JWT (Passport), Pino, Swagger
+- **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS
+- **Architecture:** Lightweight DDD + Hexagonal (backend, 4 layers per module)
 
 ## Prerequisites
 
@@ -45,38 +42,72 @@ Internal legal operations API for managing cases, contracts, notices, deadlines,
 
 ## Quick Start
 
-### Docker
+### Docker — daily development (recommended)
 
-```bash
+Uses **bind mounts** for your source code and uploads, and **named volumes** for `node_modules` so `npm ci` runs only once (or when `package-lock.json` changes). No image rebuild on every start.
+
+```powershell
 cd legal-management-module
-cp .env.example .env
-docker compose up --build
 
-# First-time setup (separate terminal, after the app container is healthy)
-docker compose exec app npx prisma db seed
+Copy-Item backend\.env.example backend\.env -ErrorAction SilentlyContinue
+Copy-Item frontend\.env.example frontend\.env.local -ErrorAction SilentlyContinue
+
+docker compose -f docker-compose.dev.yml up
+
+# First time only (separate terminal, after backend is up)
+docker compose -f docker-compose.dev.yml exec backend npx prisma db seed
 ```
 
-Migrations run automatically when the app container starts (`prisma migrate deploy` in the Docker entrypoint). Seed data must be applied manually once.
+| What | Where it lives |
+|------|----------------|
+| Source code | Your local `backend/` and `frontend/` folders (live edits) |
+| `node_modules` | Docker volumes `backend_node_modules`, `frontend_node_modules` (persist between restarts) |
+| Uploads | Local `backend/uploads/` |
+| Database | Docker volume `postgres_data` |
+
+Stop: `Ctrl+C` or `docker compose -f docker-compose.dev.yml down`  
+Reset deps volumes (if corrupted): `docker compose -f docker-compose.dev.yml down -v`
+
+### Docker — production-style build
+
+Builds optimized images. Use for deployment smoke tests, not daily coding.
+
+```powershell
+docker compose up --build -d
+docker compose exec backend npx prisma db seed   # first time only
+```
+
+First build takes 5–10 minutes. `.dockerignore` files prevent sending 500MB+ of `node_modules` to Docker.
+
+Migrations run automatically when the backend container starts. Seed data must be applied manually once.
+
+| Resource | URL |
+|----------|-----|
+| Frontend | `http://localhost:3001` |
+| API | `http://localhost:3000/api/v1` |
+| Swagger | `http://localhost:3000/api/docs` |
+| Health | `GET /health` |
 
 ### Local development
 
 ```bash
 docker compose up postgres -d
+
+# Backend
+cd backend
 npm install
 cp .env.example .env
 npm run prisma:generate
 npx prisma migrate dev
 npx prisma db seed
 npm run start:dev
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
 ```
-
-The API is available at `http://localhost:3000`.
-
-| Resource | URL |
-|----------|-----|
-| Health | `GET /health` |
-| Swagger | `http://localhost:3000/api/docs` |
-| API base | `/api/v1` |
 
 ## Environment Variables
 
@@ -88,7 +119,9 @@ The API is available at `http://localhost:3000`.
 | `PORT` | `3000` | HTTP port |
 | `APP_TIMEZONE` | `Asia/Tehran` | Timezone for today/overdue deadline logic |
 | `UPLOAD_DIR` | `./uploads` | Local document storage path |
+| `FRONTEND_URL` | `http://localhost:3001` | CORS origin for the Next.js app |
 | `NODE_ENV` | `development` | Environment |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3000/api/v1` | Frontend API base URL (in `frontend/.env.local`) |
 
 ## Seed Credentials
 
@@ -306,24 +339,26 @@ Full interactive docs: **Swagger UI** at `/api/docs`.
 | Role | Access |
 |------|--------|
 | `LEGAL_ADMIN` | Full access including offboarding |
-| `LEGAL_MANAGER` | Full access including offboarding |
-| `LEGAL_COUNSEL` | View/edit own matters; assigned tasks/deadlines |
-| `VIEWER` | Read-only across all records |
+| `LEGAL_MANAGER` | Full access excluding offboarding and user manager and logs |
+| `LEGAL_COUNSEL` | View owned matters; add/edit assigned deadlines/reminders |
+| `VIEWER` | Read-only on owned matters |
 
 ### Permission matrix
 
 | Action | Admin/Manager | Counsel | Viewer |
 |--------|:-------------:|:-------:|:------:|
-| View all cases/contracts/notices | ✅ | Own only | ✅ |
+| View all cases/contracts/notices | ✅ | Owned only | Owned only |
 | Create/edit cases/contracts/notices | ✅ | Own only | ❌ |
 | Reassign ownership | ✅ | ❌ | ❌ |
-| View all deadlines | ✅ | Own matters + assigned | ✅ |
+| View all deadlines | ✅ | Own matters + assigned | Own matters + assigned |
 | Edit deadline | ✅ | Owner or assignee | ❌ |
-| View all tasks | ✅ | Own matters + assigned + created | ✅ |
+| View all tasks | ✅ | Own matters + assigned + created | Own matters + assigned + created |
 | Upload document | ✅ | ✅ (on accessible matter) | ❌ |
 | Manage users | ✅ | ❌ | ❌ |
 | Bulk offboarding | ✅ | ❌ | ❌ |
 | View activity logs | All | Own actions only | All |
+| Dashboard "My Work" | Owned matters + assigned deadlines/tasks | Owned matters + assigned deadlines/tasks | Owned matters + assigned deadlines/tasks |
+| Dashboard "All" | ✅ | ❌ | ❌ |
 
 Authorization is enforced in use cases via `AccessControlService`, not only controller guards.
 
@@ -404,6 +439,7 @@ Every mutation writes an entry with actor, timestamp, and JSON metadata. Counsel
 ## Testing
 
 ```bash
+cd backend
 npm test                  # Unit (54 suites, 469 tests)
 npm run test:integration  # Repos (12 suites, 101 tests; requires DATABASE_URL)
 npm run test:e2e          # HTTP API (14 suites, 221 tests; requires DATABASE_URL)
@@ -417,20 +453,23 @@ Coverage includes every API endpoint across unit, integration, and e2e layers: a
 ## Project Structure
 
 ```
-src/
-├── config/           # Env validation, constants
-├── prisma/           # PrismaModule + PrismaService
-├── shared/           # AccessControl, ActivityLog, guards, utils
-└── modules/          # auth, users, cases, contracts, notices, deadlines,
-                      # reminders, tasks, documents, discussions,
-                      # financial-records, activity-log, dashboard, offboarding
-    ├── domain/
-    ├── application/
-    ├── infrastructure/
-    └── presentation/
+legal-management-module/
+├── backend/              # NestJS API
+│   ├── src/
+│   │   ├── config/
+│   │   ├── prisma/
+│   │   ├── shared/
+│   │   └── modules/
+│   ├── prisma/
+│   └── test/
+├── frontend/             # Next.js UI
+│   └── src/app/
+└── docker-compose.yml
 ```
 
 ## Scripts
+
+Run from `backend/`:
 
 | Command | Description |
 |---------|-------------|
@@ -464,16 +503,19 @@ All core product requirements are implemented:
 | Reassignment + bulk offboarding | ✅ |
 | Persian dates (all entities with dates) | ✅ |
 | Seed data, migrations, tests, Docker setup | ✅ |
+| Next.js frontend (full module coverage) | ✅ |
 
-The project is API-first; Swagger at `/api/docs` serves as the interactive client.
+Swagger at `/api/docs` documents the API; the Next.js app at `:3001` is the primary UI.
 
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
+| Docker build takes 20+ minutes / appears stuck | Use `docker compose -f docker-compose.dev.yml up` instead of `up --build`. Ensure `.dockerignore` exists in `backend/` and `frontend/` |
+| `npm ci` runs every Docker start | Use `docker-compose.dev.yml` — deps are stored in named volumes and skipped when unchanged |
 | `ECONNREFUSED` on port 5432 | Start Postgres: `docker compose up postgres -d`, or check `DATABASE_URL` |
 | `JWT_SECRET` validation error | Use a secret of at least 32 characters in `.env` |
-| Empty lists after first Docker start | Run `docker compose exec app npx prisma db seed` |
+| Empty lists after first Docker start | Run `docker compose exec backend npx prisma db seed` |
 | Integration/e2e tests fail | Ensure Postgres is running and `DATABASE_URL` in `.env` is correct |
 | Port 3000 already in use | Change `PORT` in `.env` or stop the conflicting process |
 
@@ -484,7 +526,6 @@ Out of scope for the current MVP but natural next steps:
 - Reminder delivery (email or push) instead of marking reminders as sent only
 - Cloud object storage adapter (e.g. S3) alongside local file storage
 - CI pipeline for build, lint, and test on every push
-- Frontend client consuming this API
 
 ## License
 

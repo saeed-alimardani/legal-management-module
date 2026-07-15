@@ -17,6 +17,13 @@ describe('GetDashboardSummaryUseCase', () => {
     role: UserRole.LEGAL_COUNSEL,
   };
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const today = new Date('2026-07-14T00:00:00.000Z');
 
   const prisma = {
@@ -28,7 +35,7 @@ describe('GetDashboardSummaryUseCase', () => {
   };
 
   const accessControl = {
-    buildOwnerListFilter: jest.fn(),
+    canViewAll: jest.fn(),
   };
 
   const configService = {
@@ -39,7 +46,9 @@ describe('GetDashboardSummaryUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    accessControl.buildOwnerListFilter.mockReturnValue({});
+    accessControl.canViewAll.mockImplementation((user: AuthenticatedUser) =>
+      user.role !== UserRole.LEGAL_COUNSEL,
+    );
     prisma.legalCase.count.mockResolvedValue(2);
     prisma.contract.count.mockResolvedValue(1);
     prisma.legalNotice.count.mockResolvedValue(1);
@@ -60,45 +69,86 @@ describe('GetDashboardSummaryUseCase', () => {
       .mockReturnValue(today);
   });
 
-  it('returns aggregated counts for admin without owner scope', async () => {
+  it('returns all and my sections for admin', async () => {
     const result = await useCase.execute(admin);
 
-    expect(accessControl.buildOwnerListFilter).toHaveBeenCalledWith(admin);
-    expect(result.data).toEqual({
-      openCases: 2,
-      activeContracts: 1,
-      pendingNotices: 1,
-      overdueDeadlines: 3,
-      todayDeadlines: 2,
-      myOpenTasks: 4,
-    });
+    expect(result.data.canViewAll).toBe(true);
+    expect(result.data.all.openCases).toBe(2);
+    expect(result.data.my.openCases).toBe(2);
+    expect(prisma.task.count).toHaveBeenCalled();
   });
 
-  it('applies counsel owner scope to matter counts', async () => {
-    accessControl.buildOwnerListFilter.mockReturnValue({ ownerId: counsel.id });
+  it('returns only my section for counsel using owned matters', async () => {
+    accessControl.canViewAll.mockReturnValue(false);
 
-    await useCase.execute(counsel);
+    const result = await useCase.execute(counsel);
 
+    expect(result.data.canViewAll).toBe(false);
+    expect(result.data.all.myOpenTasks).toBe(0);
+    expect(result.data.my.openCases).toBe(2);
     expect(prisma.legalCase.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({ ownerId: counsel.id }),
+      where: expect.objectContaining({
+        ownerId: counsel.id,
+      }),
+    });
+    expect(prisma.contract.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        ownerId: counsel.id,
+      }),
     });
     expect(prisma.task.count).toHaveBeenCalledWith({
       where: expect.objectContaining({ assigneeId: counsel.id }),
     });
   });
 
-  it('applies counsel deadline scope with parent ownership or assignment', async () => {
+  it('scopes manager my-work matters to owned only', async () => {
+    accessControl.canViewAll.mockReturnValue(true);
+    prisma.legalCase.count
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(0);
+    prisma.contract.count
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(0);
+    prisma.legalNotice.count
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(1);
+    prisma.deadline.count
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(1);
+    prisma.task.count.mockResolvedValueOnce(5).mockResolvedValueOnce(1);
+
+    const result = await useCase.execute(manager);
+
+    expect(result.data.my.openCases).toBe(0);
+    expect(result.data.my.activeContracts).toBe(0);
+    expect(result.data.my.pendingNotices).toBe(1);
+    expect(prisma.legalCase.count).toHaveBeenLastCalledWith({
+      where: expect.objectContaining({
+        ownerId: manager.id,
+      }),
+    });
+    expect(prisma.deadline.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ assigneeId: manager.id }),
+    });
+  });
+
+  it('counts counsel my-work deadlines by assignee only', async () => {
+    accessControl.canViewAll.mockReturnValue(false);
+    prisma.legalCase.count.mockResolvedValue(1);
+    prisma.contract.count.mockResolvedValue(1);
+    prisma.legalNotice.count.mockResolvedValue(1);
+    prisma.deadline.count.mockResolvedValue(0);
+    prisma.task.count.mockResolvedValue(3);
+
     await useCase.execute(counsel);
 
     expect(prisma.deadline.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        OR: [
-          { assigneeId: counsel.id },
-          { legalCase: { ownerId: counsel.id, deletedAt: null } },
-          { contract: { ownerId: counsel.id, deletedAt: null } },
-          { notice: { ownerId: counsel.id, deletedAt: null } },
-        ],
-      }),
+      where: expect.objectContaining({ assigneeId: counsel.id }),
+    });
+    expect(prisma.deadline.count).not.toHaveBeenCalledWith({
+      where: expect.objectContaining({ OR: expect.any(Array) }),
     });
   });
 });

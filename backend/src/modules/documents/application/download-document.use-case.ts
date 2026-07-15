@@ -35,7 +35,11 @@ export class DownloadDocumentUseCase {
       throw new NotFoundException('Document not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: parentOwnerId });
+    const involved = await this.documentRepository.isUserInvolved(
+      documentId,
+      user.id,
+    );
+    this.accessControl.assertCanViewMatter(user, parentOwnerId, involved);
 
     const buffer = await this.fileStorage.read(document.storageKey);
 

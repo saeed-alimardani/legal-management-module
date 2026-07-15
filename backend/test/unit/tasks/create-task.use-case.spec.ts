@@ -64,7 +64,7 @@ describe('CreateTaskUseCase', () => {
     caseId: 'case-1',
     contractId: null,
     noticeId: null,
-    createdById: counsel.id,
+    createdById: manager.id,
     completedAt: null,
     deletedAt: null,
     createdAt,
@@ -97,7 +97,7 @@ describe('CreateTaskUseCase', () => {
   });
 
   it('creates a task on an owned case and logs CREATED', async () => {
-    const result = await useCase.execute(counsel, {
+    const result = await useCase.execute(manager, {
       title: 'Review contract',
       assigneeId: counsel.id,
       caseId: 'case-1',
@@ -107,7 +107,7 @@ describe('CreateTaskUseCase', () => {
       expect.objectContaining({
         title: 'Review contract',
         caseId: 'case-1',
-        createdById: counsel.id,
+        createdById: manager.id,
         status: TaskStatus.TODO,
         assigneeId: counsel.id,
       }),
@@ -117,7 +117,7 @@ describe('CreateTaskUseCase', () => {
         action: AuditAction.CREATED,
         entityType: EntityType.TASK,
         entityId: 'task-1',
-        actorId: counsel.id,
+        actorId: manager.id,
       }),
     );
     expect(result.data).toBeDefined();
@@ -128,7 +128,7 @@ describe('CreateTaskUseCase', () => {
       buildTask({ dueDate: new Date('2026-07-20T00:00:00.000Z') }),
     );
 
-    const result = await useCase.execute(counsel, {
+    const result = await useCase.execute(manager, {
       title: 'Review contract',
       assigneeId: counsel.id,
       caseId: 'case-1',
@@ -142,7 +142,7 @@ describe('CreateTaskUseCase', () => {
   });
 
   it('defaults status to TODO when not provided', async () => {
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'Review contract',
       assigneeId: counsel.id,
       caseId: 'case-1',
@@ -158,7 +158,7 @@ describe('CreateTaskUseCase', () => {
       buildTask({ status: TaskStatus.IN_PROGRESS }),
     );
 
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'Review',
       assigneeId: counsel.id,
       caseId: 'case-1',
@@ -172,7 +172,7 @@ describe('CreateTaskUseCase', () => {
 
   it('throws 400 when no parent FK is provided', async () => {
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         assigneeId: counsel.id,
       }),
@@ -181,7 +181,7 @@ describe('CreateTaskUseCase', () => {
 
   it('throws 400 when more than one parent FK is provided', async () => {
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         assigneeId: counsel.id,
         caseId: 'case-1',
@@ -192,7 +192,7 @@ describe('CreateTaskUseCase', () => {
 
   it('throws 400 when all three parent FKs are provided', async () => {
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         assigneeId: counsel.id,
         caseId: 'case-1',
@@ -206,7 +206,7 @@ describe('CreateTaskUseCase', () => {
     taskRepository.findParentOwner.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         assigneeId: counsel.id,
         caseId: 'missing-case',
@@ -242,7 +242,7 @@ describe('CreateTaskUseCase', () => {
     taskRepository.userExistsAndActive.mockResolvedValue(false);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         assigneeId: 'inactive-user',
         caseId: 'case-1',
@@ -281,7 +281,7 @@ describe('CreateTaskUseCase', () => {
       }),
     );
 
-    const result = await useCase.execute(counsel, {
+    const result = await useCase.execute(manager, {
       title: 'Contract task',
       assigneeId: counsel.id,
       contractId: 'contract-1',
@@ -304,7 +304,7 @@ describe('CreateTaskUseCase', () => {
       }),
     );
 
-    const result = await useCase.execute(counsel, {
+    const result = await useCase.execute(manager, {
       title: 'Notice task',
       assigneeId: counsel.id,
       noticeId: 'notice-1',
@@ -322,7 +322,7 @@ describe('CreateTaskUseCase', () => {
       buildTask({ dueDate: new Date('2026-07-20T00:00:00.000Z') }),
     );
 
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'X',
       assigneeId: counsel.id,
       caseId: 'case-1',
@@ -334,7 +334,7 @@ describe('CreateTaskUseCase', () => {
   });
 
   it('stores null dueDate when not provided', async () => {
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'X',
       assigneeId: counsel.id,
       caseId: 'case-1',

@@ -39,7 +39,7 @@ describe('ListCasesUseCase', () => {
     );
   });
 
-  it('scopes counsel list to own cases', async () => {
+  it('scopes counsel list to owned matters only', async () => {
     await useCase.execute(counsel, { page: 1, limit: 20 });
 
     expect(caseRepository.list).toHaveBeenCalledWith(

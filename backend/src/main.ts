@@ -36,6 +36,15 @@ async function bootstrap(): Promise<void> {
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>(CONFIG_KEYS.PORT, 3000);
+  const frontendUrl = configService.get<string>(
+    CONFIG_KEYS.FRONTEND_URL,
+    'http://localhost:3001',
+  );
+
+  app.enableCors({
+    origin: frontendUrl,
+    credentials: true,
+  });
 
   await app.listen(port);
 }

@@ -70,7 +70,7 @@ describe('CreateNoticeUseCase', () => {
     receivedDate: new Date('2026-07-01T00:00:00.000Z'),
     responseDeadline: new Date('2026-07-15T00:00:00.000Z'),
     status: NoticeStatus.RECEIVED,
-    ownerId: counsel.id,
+    ownerId: manager.id,
     description: null,
     relatedCaseId: null,
     relatedContractId: null,
@@ -84,9 +84,9 @@ describe('CreateNoticeUseCase', () => {
     title: 'Response deadline: Demand Letter',
     dueDate: new Date('2026-07-15T00:00:00.000Z'),
     status: DeadlineStatus.PENDING,
-    assigneeId: counsel.id,
+    assigneeId: manager.id,
     noticeId: 'notice-1',
-    createdById: counsel.id,
+    createdById: manager.id,
   };
 
   beforeEach(() => {
@@ -132,7 +132,7 @@ describe('CreateNoticeUseCase', () => {
   });
 
   it('creates notice + auto deadline in one transaction with dual activity logs', async () => {
-    const result = await useCase.execute(counsel, {
+    const result = await useCase.execute(manager, {
       title: 'Demand Letter',
       sender: 'Vendor X',
       receivedDate: new Date('2026-07-01T15:00:00.000Z'),
@@ -149,7 +149,7 @@ describe('CreateNoticeUseCase', () => {
         receivedDate: new Date('2026-07-01T00:00:00.000Z'),
         responseDeadline: new Date('2026-07-15T00:00:00.000Z'),
         status: NoticeStatus.RECEIVED,
-        ownerId: counsel.id,
+        ownerId: manager.id,
       }),
     });
 
@@ -158,16 +158,16 @@ describe('CreateNoticeUseCase', () => {
         title: 'Response deadline: Demand Letter',
         dueDate: new Date('2026-07-15T00:00:00.000Z'),
         status: DeadlineStatus.PENDING,
-        assigneeId: counsel.id,
+        assigneeId: manager.id,
         noticeId: createdNotice.id,
-        createdById: counsel.id,
+        createdById: manager.id,
       }),
     });
 
     expect(tx.reminder.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         deadlineId: createdDeadline.id,
-        createdById: counsel.id,
+        createdById: manager.id,
       }),
     });
 
@@ -205,7 +205,7 @@ describe('CreateNoticeUseCase', () => {
 
   it('rejects when responseDeadline is before receivedDate', async () => {
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'Bad Dates',
         sender: 'X',
         receivedDate: new Date('2026-07-15'),
@@ -236,7 +236,7 @@ describe('CreateNoticeUseCase', () => {
         responseDeadline: new Date('2026-07-15'),
         ownerId: 'other-owner',
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('allows manager to assign a different owner and uses it for deadline assignee', async () => {
@@ -273,7 +273,7 @@ describe('CreateNoticeUseCase', () => {
     noticeRepository.relatedCaseExists.mockResolvedValue(false);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'Notice',
         sender: 'X',
         receivedDate: new Date('2026-07-01'),
@@ -289,7 +289,7 @@ describe('CreateNoticeUseCase', () => {
     noticeRepository.relatedContractExists.mockResolvedValue(false);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'Notice',
         sender: 'X',
         receivedDate: new Date('2026-07-01'),
@@ -314,7 +314,7 @@ describe('CreateNoticeUseCase', () => {
   });
 
   it('persists optional related matter ids', async () => {
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'Linked Notice',
       sender: 'X',
       receivedDate: new Date('2026-07-01'),

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { buildCounselFinancialRecordWhere } from '../../../shared/access-control/counsel-involvement.where';
 import {
   CreateFinancialRecordInput,
   FinancialRecordListScope,
@@ -43,6 +44,18 @@ export class PrismaFinancialRecordRepository {
       where: { id, deletedAt: null },
       include: parentInclude,
     });
+  }
+
+  async isUserInvolved(recordId: string, userId: string): Promise<boolean> {
+    const count = await this.prisma.financialRecord.count({
+      where: {
+        id: recordId,
+        deletedAt: null,
+        ...buildCounselFinancialRecordWhere(userId),
+      },
+    });
+
+    return count > 0;
   }
 
   async list(
@@ -126,17 +139,10 @@ export class PrismaFinancialRecordRepository {
   private buildScopeWhere(
     scope: FinancialRecordListScope,
   ): Prisma.FinancialRecordWhereInput {
-    if (!scope.ownerId) {
+    if (!scope.counselUserId) {
       return {};
     }
 
-    const ownerId = scope.ownerId;
-
-    return {
-      OR: [
-        { legalCase: { ownerId, deletedAt: null } },
-        { contract: { ownerId, deletedAt: null } },
-      ],
-    };
+    return buildCounselFinancialRecordWhere(scope.counselUserId);
   }
 }

@@ -20,7 +20,7 @@ export class ListUsersUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, command: ListUsersCommand) {
-    this.assertAdminOrManager(user);
+    this.assertAdmin(user);
 
     const { items, total } = await this.userRepository.list({
       page: command.page,
@@ -36,9 +36,7 @@ export class ListUsersUseCase {
     });
   }
 
-  private assertAdminOrManager(user: AuthenticatedUser): void {
-    if (!this.accessControl.isAdminOrManager(user)) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
+  private assertAdmin(user: AuthenticatedUser): void {
+    this.accessControl.assertCanManageUsers(user);
   }
 }

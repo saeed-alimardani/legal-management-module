@@ -16,7 +16,7 @@ export class DeleteDocumentUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, documentId: string) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanCreateMatterContent(user);
 
     const existing = await this.documentRepository.findById(documentId);
 

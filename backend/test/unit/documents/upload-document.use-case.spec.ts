@@ -19,6 +19,8 @@ import { PrismaDocumentRepository } from '../../../src/modules/documents/infrast
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
+import { MatterInvolvementService } from '../../../src/shared/access-control/matter-involvement.service';
+import { createMockMatterInvolvement } from '../../helpers/rbac.helper';
 
 describe('UploadDocumentUseCase', () => {
   let useCase: UploadDocumentUseCase;
@@ -28,6 +30,9 @@ describe('UploadDocumentUseCase', () => {
   let fileStorage: jest.Mocked<Pick<FileStoragePort, 'save' | 'read'>>;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
+  let matterInvolvement: jest.Mocked<
+    Pick<MatterInvolvementService, 'isUserInvolvedInParent'>
+  >;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -107,10 +112,13 @@ describe('UploadDocumentUseCase', () => {
       get: jest.fn().mockReturnValue('Asia/Tehran'),
     };
 
+    matterInvolvement = createMockMatterInvolvement();
+
     useCase = new UploadDocumentUseCase(
       documentRepository as unknown as PrismaDocumentRepository,
       fileStorage as unknown as FileStoragePort,
       new AccessControlService(),
+      matterInvolvement as unknown as MatterInvolvementService,
       activityLogService as unknown as ActivityLogService,
       configService as unknown as ConfigService,
     );
@@ -193,6 +201,7 @@ describe('UploadDocumentUseCase', () => {
     documentRepository.findParentOwner.mockResolvedValue({
       ownerId: otherCounsel.id,
     });
+    matterInvolvement.isUserInvolvedInParent.mockResolvedValue(false);
 
     await expect(useCase.execute(counsel, validCommand)).rejects.toThrow(
       ForbiddenException,

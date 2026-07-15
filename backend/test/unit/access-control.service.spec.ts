@@ -38,8 +38,8 @@ describe('AccessControlService', () => {
     service = new AccessControlService();
   });
 
-  it('allows counsel to edit own resource', () => {
-    expect(service.canEdit(counsel, { ownerId: counsel.id })).toBe(true);
+  it('denies counsel editing core entities', () => {
+    expect(service.canEdit(counsel, { ownerId: counsel.id })).toBe(false);
   });
 
   it('denies counsel editing another users resource', () => {
@@ -50,8 +50,23 @@ describe('AccessControlService', () => {
     expect(service.canEdit(manager, { ownerId: 'other-id' })).toBe(true);
   });
 
-  it('denies viewer mutations', () => {
-    expect(service.canMutate(viewer)).toBe(false);
+  it('denies counsel from managing core entities', () => {
+    expect(service.canManageCoreEntities(counsel)).toBe(false);
+    expect(service.canMutate(counsel)).toBe(false);
+  });
+
+  it('allows counsel to create matter content', () => {
+    expect(service.canCreateMatterContent(counsel)).toBe(true);
+  });
+
+  it('denies viewer from creating matter content', () => {
+    expect(service.canCreateMatterContent(viewer)).toBe(false);
+  });
+
+  it('restricts user management to admin only', () => {
+    expect(service.canManageUsers(admin)).toBe(true);
+    expect(service.canManageUsers(manager)).toBe(false);
+    expect(service.canManageUsers(counsel)).toBe(false);
   });
 
   it('allows counsel to view assigned resource', () => {
@@ -60,8 +75,34 @@ describe('AccessControlService', () => {
     ).toBe(true);
   });
 
-  it('scopes counsel list filter to own records', () => {
+  it('scopes counsel list filter to counsel user id', () => {
     expect(service.buildOwnerListFilter(counsel)).toEqual({
+      counselUserId: counsel.id,
+    });
+  });
+
+  it('scopes counsel case list to owned matters only', () => {
+    expect(service.buildCaseListScope(counsel)).toEqual({
+      ownerId: counsel.id,
+    });
+  });
+
+  it('scopes viewer case list to owned matters only', () => {
+    expect(service.buildCaseListScope(viewer)).toEqual({
+      ownerId: viewer.id,
+    });
+  });
+
+  it('does not scope admin or manager case list', () => {
+    expect(service.buildCaseListScope(admin)).toEqual({});
+    expect(service.buildCaseListScope(manager)).toEqual({});
+  });
+
+  it('scopes counsel contract and notice lists to owned matters only', () => {
+    expect(service.buildContractListScope(counsel)).toEqual({
+      ownerId: counsel.id,
+    });
+    expect(service.buildNoticeListScope(counsel)).toEqual({
       ownerId: counsel.id,
     });
   });
@@ -80,42 +121,42 @@ describe('AccessControlService', () => {
     expect(service.buildDeadlineListFilter(admin)).toEqual({});
   });
 
-  it('allows counsel to edit deadline when assigned', () => {
+  it('denies counsel editing deadlines they did not create', () => {
     expect(
       service.canEditDeadline(counsel, {
-        ownerId: 'other-id',
-        assigneeId: counsel.id,
+        createdById: 'other-id',
+      }),
+    ).toBe(false);
+  });
+
+  it('allows counsel to edit deadlines they created', () => {
+    expect(
+      service.canEditDeadline(counsel, {
+        createdById: counsel.id,
       }),
     ).toBe(true);
   });
 
-  it('denies counsel cancel when not parent owner', () => {
-    expect(service.canEdit(counsel, { ownerId: 'other-id' })).toBe(false);
+  it('allows counsel to cancel deadlines they created', () => {
+    expect(
+      service.canCancelDeadline(counsel, {
+        createdById: counsel.id,
+      }),
+    ).toBe(true);
   });
 
-  it('allows counsel to edit task when assignee or creator', () => {
+  it('denies counsel editing tasks', () => {
     expect(
       service.canEditTask(counsel, {
         ownerId: 'other-id',
         assigneeId: counsel.id,
         createdById: 'creator-id',
       }),
-    ).toBe(true);
-
-    expect(
-      service.canEditTask(counsel, {
-        ownerId: 'other-id',
-        assigneeId: 'other-assignee',
-        createdById: counsel.id,
-      }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it('allows counsel to cancel only own created tasks', () => {
+  it('denies counsel from canceling tasks', () => {
     expect(service.canCancelTask(counsel, { createdById: counsel.id })).toBe(
-      true,
-    );
-    expect(service.canCancelTask(counsel, { createdById: 'other-id' })).toBe(
       false,
     );
   });
@@ -146,17 +187,19 @@ describe('AccessControlService', () => {
       expect(service.buildTaskListFilter(manager)).toEqual({});
     });
 
-    it('does not scope viewer task list', () => {
-      expect(service.buildTaskListFilter(viewer)).toEqual({});
+    it('scopes viewer task list to counselUserId', () => {
+      expect(service.buildTaskListFilter(viewer)).toEqual({
+        counselUserId: viewer.id,
+      });
     });
   });
 
   // --- buildFinancialRecordListFilter ---
 
   describe('buildFinancialRecordListFilter', () => {
-    it('scopes counsel financial record list to ownerId', () => {
+    it('scopes counsel financial record list to counsel user id', () => {
       expect(service.buildFinancialRecordListFilter(counsel)).toEqual({
-        ownerId: counsel.id,
+        counselUserId: counsel.id,
       });
     });
 
@@ -164,8 +207,10 @@ describe('AccessControlService', () => {
       expect(service.buildFinancialRecordListFilter(admin)).toEqual({});
     });
 
-    it('does not scope viewer financial record list', () => {
-      expect(service.buildFinancialRecordListFilter(viewer)).toEqual({});
+    it('scopes viewer financial record list to counsel user id', () => {
+      expect(service.buildFinancialRecordListFilter(viewer)).toEqual({
+        counselUserId: viewer.id,
+      });
     });
   });
 
@@ -182,8 +227,10 @@ describe('AccessControlService', () => {
       expect(service.buildDocumentListFilter(admin)).toEqual({});
     });
 
-    it('does not scope viewer document list', () => {
-      expect(service.buildDocumentListFilter(viewer)).toEqual({});
+    it('scopes viewer document list to counselUserId', () => {
+      expect(service.buildDocumentListFilter(viewer)).toEqual({
+        counselUserId: viewer.id,
+      });
     });
   });
 
@@ -200,14 +247,14 @@ describe('AccessControlService', () => {
       ).toBe(false);
     });
 
-    it('allows counsel who is the parent owner', () => {
+    it('denies counsel even when parent owner', () => {
       expect(
         service.canEditTask(counsel, {
           ownerId: counsel.id,
           assigneeId: 'other-assignee',
           createdById: 'other-creator',
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it('allows admin to edit any task', () => {
@@ -246,8 +293,8 @@ describe('AccessControlService', () => {
       );
     });
 
-    it('denies viewer to cancel tasks', () => {
-      expect(service.canCancelTask(viewer, { createdById: viewer.id })).toBe(
+    it('denies counsel to cancel tasks', () => {
+      expect(service.canCancelTask(counsel, { createdById: counsel.id })).toBe(
         false,
       );
     });
@@ -288,8 +335,10 @@ describe('AccessControlService', () => {
       expect(service.buildDiscussionListFilter(admin)).toEqual({});
     });
 
-    it('does not scope viewer discussion list', () => {
-      expect(service.buildDiscussionListFilter(viewer)).toEqual({});
+    it('scopes viewer discussion list to counselUserId', () => {
+      expect(service.buildDiscussionListFilter(viewer)).toEqual({
+        counselUserId: viewer.id,
+      });
     });
   });
 
@@ -340,14 +389,14 @@ describe('AccessControlService', () => {
       ).toThrow(ForbiddenException);
     });
 
-    it('does not throw when counsel is the creator', () => {
+    it('throws ForbiddenException when counsel is the creator', () => {
       expect(() =>
         service.assertCanEditTask(counsel, {
           ownerId: 'other-owner',
           assigneeId: 'other-assignee',
           createdById: counsel.id,
         }),
-      ).not.toThrow();
+      ).toThrow(ForbiddenException);
     });
   });
 
@@ -366,10 +415,10 @@ describe('AccessControlService', () => {
       ).not.toThrow();
     });
 
-    it('does not throw when counsel cancels own task', () => {
+    it('throws ForbiddenException when counsel cancels own task', () => {
       expect(() =>
         service.assertCanCancelTask(counsel, { createdById: counsel.id }),
-      ).not.toThrow();
+      ).toThrow(ForbiddenException);
     });
   });
 

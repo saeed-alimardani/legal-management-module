@@ -9,7 +9,9 @@ import { createMockConfigService } from '../../helpers/config.helper';
 
 describe('GetCaseUseCase', () => {
   let useCase: GetCaseUseCase;
-  let caseRepository: jest.Mocked<Pick<PrismaCaseRepository, 'findById'>>;
+  let caseRepository: jest.Mocked<
+    Pick<PrismaCaseRepository, 'findById' | 'isUserInvolved'>
+  >;
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -52,6 +54,7 @@ describe('GetCaseUseCase', () => {
   beforeEach(() => {
     caseRepository = {
       findById: jest.fn().mockResolvedValue(legalCase),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     useCase = new GetCaseUseCase(

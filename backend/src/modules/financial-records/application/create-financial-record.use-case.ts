@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuditAction, EntityType, Prisma } from '@prisma/client';
 import { CONFIG_KEYS } from '../../../config/constants';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
+import { MatterInvolvementService } from '../../../shared/access-control/matter-involvement.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
@@ -35,13 +36,12 @@ export class CreateFinancialRecordUseCase {
   constructor(
     private readonly financialRecordRepository: PrismaFinancialRecordRepository,
     private readonly accessControl: AccessControlService,
+    private readonly matterInvolvement: MatterInvolvementService,
     private readonly activityLogService: ActivityLogService,
     private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateFinancialRecordCommand) {
-    this.accessControl.assertCanMutate(user);
-
     if (countParentRefs(command) !== 1) {
       throw new BadRequestException(
         'Exactly one of caseId or contractId is required',
@@ -57,7 +57,18 @@ export class CreateFinancialRecordUseCase {
       throw new NotFoundException('Parent matter not found');
     }
 
-    this.accessControl.assertCanEdit(user, { ownerId: parent.ownerId });
+    const involved = await this.matterInvolvement.isUserInvolvedInParent(
+      {
+        caseId: command.caseId,
+        contractId: command.contractId,
+      },
+      user.id,
+    );
+    this.accessControl.assertCanContributeToMatter(
+      user,
+      parent.ownerId,
+      involved,
+    );
 
     const recordDateUtc = toUtcDateOnly(command.recordDate);
 

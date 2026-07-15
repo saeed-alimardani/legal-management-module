@@ -24,6 +24,10 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/src/shared/utils/date-boundary.util.ts ./src/shared/utils/date-boundary.util.ts
+
+# prisma db seed uses ts-node (dev-only in package.json, needed for first-time Docker setup)
+RUN npm install --no-save ts-node typescript
 
 RUN mkdir -p /app/uploads
 

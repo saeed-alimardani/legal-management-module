@@ -10,12 +10,14 @@ describe('ListActivityLogsUseCase', () => {
   let useCase: ListActivityLogsUseCase;
   let activityLogList: jest.Mock;
   let prisma: {
-    legalCase: { findFirst: jest.Mock };
-    contract: { findFirst: jest.Mock };
-    legalNotice: { findFirst: jest.Mock };
+    legalCase: { findFirst: jest.Mock; count: jest.Mock };
+    contract: { findFirst: jest.Mock; count: jest.Mock };
+    legalNotice: { findFirst: jest.Mock; count: jest.Mock };
     deadline: { findUnique: jest.Mock };
     task: { findUnique: jest.Mock };
-    document: { findFirst: jest.Mock };
+    document: { findFirst: jest.Mock; count: jest.Mock };
+    discussion: { findFirst: jest.Mock; count: jest.Mock };
+    financialRecord: { findFirst: jest.Mock; count: jest.Mock };
   };
 
   const counselId = 'counsel-id';
@@ -35,6 +37,13 @@ describe('ListActivityLogsUseCase', () => {
     role: UserRole.LEGAL_ADMIN,
   };
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const viewer: AuthenticatedUser = {
     id: 'viewer-id',
     email: 'viewer@legal.local',
@@ -47,12 +56,17 @@ describe('ListActivityLogsUseCase', () => {
   beforeEach(() => {
     activityLogList = jest.fn().mockResolvedValue(defaultListResult);
     prisma = {
-      legalCase: { findFirst: jest.fn() },
-      contract: { findFirst: jest.fn() },
-      legalNotice: { findFirst: jest.fn() },
+      legalCase: { findFirst: jest.fn(), count: jest.fn().mockResolvedValue(0) },
+      contract: { findFirst: jest.fn(), count: jest.fn().mockResolvedValue(0) },
+      legalNotice: { findFirst: jest.fn(), count: jest.fn().mockResolvedValue(0) },
       deadline: { findUnique: jest.fn() },
       task: { findUnique: jest.fn() },
-      document: { findFirst: jest.fn() },
+      document: { findFirst: jest.fn(), count: jest.fn().mockResolvedValue(0) },
+      discussion: { findFirst: jest.fn(), count: jest.fn().mockResolvedValue(0) },
+      financialRecord: {
+        findFirst: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
     };
 
     useCase = new ListActivityLogsUseCase(
@@ -63,17 +77,19 @@ describe('ListActivityLogsUseCase', () => {
   });
 
   describe('unscoped list (no entityType / entityId)', () => {
-    it('calls list with skipCounselActorScope false for counsel', async () => {
-      await useCase.execute(counsel, { page: 1, limit: 20 });
-
-      expect(activityLogList).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1, limit: 20 }),
-        counsel,
-        { skipCounselActorScope: false },
-      );
+    it('denies counsel', async () => {
+      await expect(
+        useCase.execute(counsel, { page: 1, limit: 20 }),
+      ).rejects.toThrow(ForbiddenException);
     });
 
-    it('returns paginated response with data and meta', async () => {
+    it('denies manager', async () => {
+      await expect(
+        useCase.execute(manager, { page: 1, limit: 20 }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('returns paginated response with data and meta for admin', async () => {
       const items = [{ id: 'log-1' }];
       activityLogList.mockResolvedValue({
         items,
@@ -92,8 +108,7 @@ describe('ListActivityLogsUseCase', () => {
   });
 
   describe('entity-scoped CASE', () => {
-    it('counsel owns case → skipCounselActorScope true, returns paginated response', async () => {
-      prisma.legalCase.findFirst.mockResolvedValue({ ownerId: counselId });
+    it('admin can access entity-scoped case logs', async () => {
       const items = [{ id: 'log-2' }];
       activityLogList.mockResolvedValue({
         items,
@@ -102,7 +117,7 @@ describe('ListActivityLogsUseCase', () => {
         limit: 20,
       });
 
-      const result = await useCase.execute(counsel, {
+      const result = await useCase.execute(admin, {
         entityType: EntityType.CASE,
         entityId,
         page: 1,
@@ -111,7 +126,7 @@ describe('ListActivityLogsUseCase', () => {
 
       expect(activityLogList).toHaveBeenCalledWith(
         expect.objectContaining({ entityType: EntityType.CASE, entityId }),
-        counsel,
+        admin,
         { skipCounselActorScope: true },
       );
       expect(result).toEqual({
@@ -120,9 +135,7 @@ describe('ListActivityLogsUseCase', () => {
       });
     });
 
-    it('counsel does not own case → ForbiddenException', async () => {
-      prisma.legalCase.findFirst.mockResolvedValue({ ownerId: 'other-id' });
-
+    it('counsel is denied before entity lookup', async () => {
       await expect(
         useCase.execute(counsel, {
           entityType: EntityType.CASE,
@@ -131,28 +144,31 @@ describe('ListActivityLogsUseCase', () => {
           limit: 20,
         }),
       ).rejects.toThrow(ForbiddenException);
+      expect(prisma.legalCase.findFirst).not.toHaveBeenCalled();
     });
 
-    it('case not found → NotFoundException', async () => {
+    it('admin skips missing entity validation for scoped queries', async () => {
       prisma.legalCase.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.CASE,
           entityId,
           page: 1,
           limit: 20,
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).resolves.toEqual({
+        data: [],
+        meta: { page: 1, limit: 20, total: 0 },
+      });
+      expect(prisma.legalCase.findFirst).not.toHaveBeenCalled();
     });
   });
 
   describe('entity-scoped CONTRACT', () => {
-    it('counsel owns contract → success', async () => {
-      prisma.contract.findFirst.mockResolvedValue({ ownerId: counselId });
-
+    it('admin can access entity-scoped contract logs', async () => {
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.CONTRACT,
           entityId,
           page: 1,
@@ -161,26 +177,25 @@ describe('ListActivityLogsUseCase', () => {
       ).resolves.toBeDefined();
     });
 
-    it('contract not found → NotFoundException', async () => {
+    it('admin skips missing contract validation', async () => {
       prisma.contract.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.CONTRACT,
           entityId,
           page: 1,
           limit: 20,
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).resolves.toBeDefined();
+      expect(prisma.contract.findFirst).not.toHaveBeenCalled();
     });
   });
 
   describe('entity-scoped NOTICE', () => {
-    it('counsel owns notice → success', async () => {
-      prisma.legalNotice.findFirst.mockResolvedValue({ ownerId: counselId });
-
+    it('admin can access entity-scoped notice logs', async () => {
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.NOTICE,
           entityId,
           page: 1,
@@ -191,16 +206,16 @@ describe('ListActivityLogsUseCase', () => {
   });
 
   describe('entity-scoped DEADLINE', () => {
-    it('counsel is assignee → can view', async () => {
+    it('admin can access entity-scoped deadline logs', async () => {
       prisma.deadline.findUnique.mockResolvedValue({
         assigneeId: counselId,
-        legalCase: { ownerId: 'other-owner', deletedAt: null },
+        legalCase: { id: 'case-1', ownerId: 'other-owner', deletedAt: null },
         contract: null,
         notice: null,
       });
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.DEADLINE,
           entityId,
           page: 1,
@@ -209,31 +224,33 @@ describe('ListActivityLogsUseCase', () => {
       ).resolves.toBeDefined();
     });
 
-    it('deadline not found → NotFoundException', async () => {
+    it('admin skips missing deadline validation', async () => {
       prisma.deadline.findUnique.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.DEADLINE,
           entityId,
           page: 1,
           limit: 20,
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).resolves.toBeDefined();
+      expect(prisma.deadline.findUnique).not.toHaveBeenCalled();
     });
   });
 
   describe('entity-scoped TASK', () => {
-    it('counsel is assignee → can view', async () => {
+    it('admin can access entity-scoped task logs', async () => {
       prisma.task.findUnique.mockResolvedValue({
         assigneeId: counselId,
-        legalCase: { ownerId: 'other-owner', deletedAt: null },
+        createdById: 'creator-id',
+        legalCase: { id: 'case-1', ownerId: 'other-owner', deletedAt: null },
         contract: null,
         notice: null,
       });
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.TASK,
           entityId,
           page: 1,
@@ -242,22 +259,23 @@ describe('ListActivityLogsUseCase', () => {
       ).resolves.toBeDefined();
     });
 
-    it('task not found → NotFoundException', async () => {
+    it('admin skips missing task validation', async () => {
       prisma.task.findUnique.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.TASK,
           entityId,
           page: 1,
           limit: 20,
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).resolves.toBeDefined();
+      expect(prisma.task.findUnique).not.toHaveBeenCalled();
     });
   });
 
   describe('entity-scoped DOCUMENT', () => {
-    it('parent case owner → can view', async () => {
+    it('admin can access entity-scoped document logs', async () => {
       prisma.document.findFirst.mockResolvedValue({
         legalCase: { ownerId: counselId, deletedAt: null },
         contract: null,
@@ -265,7 +283,7 @@ describe('ListActivityLogsUseCase', () => {
       });
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.DOCUMENT,
           entityId,
           page: 1,
@@ -274,34 +292,35 @@ describe('ListActivityLogsUseCase', () => {
       ).resolves.toBeDefined();
     });
 
-    it('document not found → NotFoundException', async () => {
+    it('admin skips missing document validation', async () => {
       prisma.document.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.DOCUMENT,
           entityId,
           page: 1,
           limit: 20,
         }),
-      ).rejects.toThrow(NotFoundException);
+      ).resolves.toBeDefined();
+      expect(prisma.document.findFirst).not.toHaveBeenCalled();
     });
   });
 
   describe('unsupported entity type', () => {
-    it('USER entityType → ForbiddenException', async () => {
+    it('admin can query USER entityType without ownership checks', async () => {
       await expect(
-        useCase.execute(counsel, {
+        useCase.execute(admin, {
           entityType: EntityType.USER,
           entityId,
           page: 1,
           limit: 20,
         }),
-      ).rejects.toThrow(ForbiddenException);
+      ).resolves.toBeDefined();
     });
   });
 
-  describe('admin and viewer skip entity ownership check', () => {
+  describe('admin skips entity ownership check', () => {
     it('admin accesses entity-scoped log without DB lookup', async () => {
       await useCase.execute(admin, {
         entityType: EntityType.CASE,
@@ -315,15 +334,18 @@ describe('ListActivityLogsUseCase', () => {
         skipCounselActorScope: true,
       });
     });
+  });
 
-    it('viewer accesses entity-scoped log without DB lookup', async () => {
-      await useCase.execute(viewer, {
-        entityType: EntityType.CASE,
-        entityId,
-        page: 1,
-        limit: 20,
-      });
-
+  describe('viewer entity access', () => {
+    it('viewer is denied before entity lookup', async () => {
+      await expect(
+        useCase.execute(viewer, {
+          entityType: EntityType.CASE,
+          entityId,
+          page: 1,
+          limit: 20,
+        }),
+      ).rejects.toThrow(ForbiddenException);
       expect(prisma.legalCase.findFirst).not.toHaveBeenCalled();
     });
   });

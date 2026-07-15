@@ -20,7 +20,7 @@ export class ListNoticesUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, filters: ListNoticesFilters) {
-    const scope = this.accessControl.buildOwnerListFilter(user);
+    const scope = this.accessControl.buildNoticeListScope(user);
     const { items, total } = await this.noticeRepository.list(filters, scope);
     const timeZone = resolveNoticeResponseTimeZone(
       this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),

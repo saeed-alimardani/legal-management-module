@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuditAction, DocumentType, EntityType } from '@prisma/client';
 import { APP_CONSTANTS } from '../../../config/constants';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
+import { MatterInvolvementService } from '../../../shared/access-control/matter-involvement.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
@@ -38,13 +39,12 @@ export class UploadDocumentUseCase {
     private readonly documentRepository: PrismaDocumentRepository,
     private readonly fileStorage: FileStoragePort,
     private readonly accessControl: AccessControlService,
+    private readonly matterInvolvement: MatterInvolvementService,
     private readonly activityLogService: ActivityLogService,
     private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: UploadDocumentCommand) {
-    this.accessControl.assertCanMutate(user);
-
     const parentRef = normalizeParentRef({
       caseId: command.caseId,
       contractId: command.contractId,
@@ -79,7 +79,15 @@ export class UploadDocumentUseCase {
       throw new NotFoundException('Parent matter not found');
     }
 
-    this.accessControl.assertCanEdit(user, { ownerId: parent.ownerId });
+    const involved = await this.matterInvolvement.isUserInvolvedInParent(
+      parentRef,
+      user.id,
+    );
+    this.accessControl.assertCanContributeToMatter(
+      user,
+      parent.ownerId,
+      involved,
+    );
 
     const { storageKey } = await this.fileStorage.save(
       command.buffer,

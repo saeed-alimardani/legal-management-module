@@ -26,7 +26,7 @@ describe('BulkTransferOwnershipUseCase', () => {
   const toUserId = 'to-user-id';
 
   const accessControl = {
-    assertCanReassign: jest.fn(),
+    assertCanManageUsers: jest.fn(),
   };
 
   const activityLogService = {
@@ -51,7 +51,7 @@ describe('BulkTransferOwnershipUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    accessControl.assertCanReassign.mockImplementation(() => undefined);
+    accessControl.assertCanManageUsers.mockImplementation(() => undefined);
     prisma.user.findFirst.mockResolvedValue({ id: fromUserId });
     tx.legalCase.updateMany.mockResolvedValue({ count: 2 });
     tx.contract.updateMany.mockResolvedValue({ count: 1 });
@@ -67,8 +67,8 @@ describe('BulkTransferOwnershipUseCase', () => {
     );
   });
 
-  it('rejects counsel without reassign permission', async () => {
-    accessControl.assertCanReassign.mockImplementationOnce(() => {
+  it('rejects non-admin users', async () => {
+    accessControl.assertCanManageUsers.mockImplementationOnce(() => {
       throw new ForbiddenException();
     });
 
@@ -96,7 +96,7 @@ describe('BulkTransferOwnershipUseCase', () => {
   it('transfers ownership and assignments in one transaction', async () => {
     const result = await useCase.execute(admin, fromUserId, toUserId);
 
-    expect(accessControl.assertCanReassign).toHaveBeenCalledWith(admin);
+    expect(accessControl.assertCanManageUsers).toHaveBeenCalledWith(admin);
     expect(tx.legalCase.updateMany).toHaveBeenCalledWith({
       where: { ownerId: fromUserId, deletedAt: null },
       data: { ownerId: toUserId },

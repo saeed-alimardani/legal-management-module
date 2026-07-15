@@ -98,7 +98,7 @@ describe('DeleteTaskUseCase', () => {
       buildTask({ status: TaskStatus.IN_PROGRESS, createdById: counsel.id }),
     );
 
-    const result = await useCase.execute(counsel, 'task-1');
+    const result = await useCase.execute(manager, 'task-1');
 
     expect(taskRepository.softDelete).toHaveBeenCalledWith('task-1');
     expect(activityLogService.log).toHaveBeenCalledWith(
@@ -106,7 +106,7 @@ describe('DeleteTaskUseCase', () => {
         action: AuditAction.DELETED,
         entityType: EntityType.TASK,
         entityId: 'task-1',
-        actorId: counsel.id,
+        actorId: manager.id,
         metadata: expect.objectContaining({
           previousStatus: TaskStatus.IN_PROGRESS,
           title: 'Review contract',
@@ -163,7 +163,7 @@ describe('DeleteTaskUseCase', () => {
   it('throws 404 when task does not exist', async () => {
     taskRepository.findById.mockResolvedValue(null);
 
-    await expect(useCase.execute(counsel, 'missing-task')).rejects.toThrow(
+    await expect(useCase.execute(manager, 'missing-task')).rejects.toThrow(
       NotFoundException,
     );
   });
@@ -177,7 +177,7 @@ describe('DeleteTaskUseCase', () => {
       }),
     );
 
-    await expect(useCase.execute(counsel, 'task-1')).rejects.toThrow(
+    await expect(useCase.execute(manager, 'task-1')).rejects.toThrow(
       NotFoundException,
     );
   });
@@ -187,7 +187,7 @@ describe('DeleteTaskUseCase', () => {
       buildTask({ status: TaskStatus.DONE }),
     );
 
-    await useCase.execute(counsel, 'task-1');
+    await useCase.execute(manager, 'task-1');
 
     expect(activityLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({

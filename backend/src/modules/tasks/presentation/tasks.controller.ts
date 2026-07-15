@@ -67,7 +67,7 @@ export class TasksController {
   }
 
   @Post()
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Create a task on a parent matter' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateTaskDto) {
@@ -95,7 +95,7 @@ export class TasksController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Update task fields or status' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(
@@ -118,7 +118,7 @@ export class TasksController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Soft-delete a task' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })

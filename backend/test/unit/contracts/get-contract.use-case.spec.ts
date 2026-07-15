@@ -10,7 +10,7 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('GetContractUseCase', () => {
   let useCase: GetContractUseCase;
   let contractRepository: jest.Mocked<
-    Pick<PrismaContractRepository, 'findById'>
+    Pick<PrismaContractRepository, 'findById' | 'isUserInvolved'>
   >;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
@@ -62,6 +62,7 @@ describe('GetContractUseCase', () => {
   beforeEach(() => {
     contractRepository = {
       findById: jest.fn().mockResolvedValue(contract),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     configService = {
@@ -80,12 +81,15 @@ describe('GetContractUseCase', () => {
     expect(result.data).toEqual(toContractResponse(contract, 'Asia/Tehran'));
   });
 
-  it('returns contract for admin and viewer regardless of ownership', async () => {
+  it('returns contract for admin regardless of ownership', async () => {
     expect((await useCase.execute(admin, contract.id)).data.id).toBe(
       contract.id,
     );
-    expect((await useCase.execute(viewer, contract.id)).data.id).toBe(
-      contract.id,
+  });
+
+  it('denies viewer access to another users contract', async () => {
+    await expect(useCase.execute(viewer, contract.id)).rejects.toThrow(
+      ForbiddenException,
     );
   });
 

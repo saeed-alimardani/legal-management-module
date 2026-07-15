@@ -61,7 +61,7 @@ export interface ListFinancialRecordsFilters {
 }
 
 export interface FinancialRecordListScope {
-  ownerId?: string;
+  counselUserId?: string;
 }
 
 export interface ParentRef {

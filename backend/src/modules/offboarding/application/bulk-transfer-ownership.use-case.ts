@@ -27,7 +27,7 @@ export class BulkTransferOwnershipUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, fromUserId: string, toUserId: string) {
-    this.accessControl.assertCanReassign(user);
+    this.accessControl.assertCanManageUsers(user);
 
     if (fromUserId === toUserId) {
       throw new BadRequestException(

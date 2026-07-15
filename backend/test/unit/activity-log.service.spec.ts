@@ -133,11 +133,11 @@ describe('ActivityLogService', () => {
       expect(callArg.where).not.toHaveProperty('actorId');
     });
 
-    it('viewer: no actorId scope injected into where', async () => {
+    it('viewer: where includes actorId: viewer.id', async () => {
       await service.list({}, viewer);
 
       const callArg = prisma.activityLog.findMany.mock.calls[0][0];
-      expect(callArg.where).not.toHaveProperty('actorId');
+      expect(callArg.where).toMatchObject({ actorId: viewer.id });
     });
 
     it('counsel: where includes actorId: counsel.id', async () => {

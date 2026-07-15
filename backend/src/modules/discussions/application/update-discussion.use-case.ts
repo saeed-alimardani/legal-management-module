@@ -31,7 +31,7 @@ export class UpdateDiscussionUseCase {
     discussionId: string,
     command: UpdateDiscussionCommand,
   ) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanCreateMatterContent(user);
 
     const existing = await this.discussionRepository.findById(discussionId);
 

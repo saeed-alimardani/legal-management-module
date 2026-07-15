@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, UserRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccessControlService } from '../access-control/access-control.service';
 import { AuthenticatedUser } from '../types/authenticated-user.type';
@@ -85,15 +85,11 @@ export class ActivityLogService {
     user: AuthenticatedUser,
     skipCounselActorScope = false,
   ): Prisma.ActivityLogWhereInput {
-    if (
-      this.accessControl.isAdminOrManager(user) ||
-      this.accessControl.isViewer(user) ||
-      skipCounselActorScope
-    ) {
+    if (this.accessControl.isAdminOrManager(user) || skipCounselActorScope) {
       return {};
     }
 
-    if (user.role === UserRole.LEGAL_COUNSEL) {
+    if (this.accessControl.hasScopedReadAccess(user)) {
       return { actorId: user.id };
     }
 

@@ -56,7 +56,7 @@ describe('CreateContractUseCase', () => {
     title: 'MSA Acme',
     type: ContractType.MSA,
     status: ContractStatus.DRAFT,
-    ownerId: counsel.id,
+    ownerId: manager.id,
     counterpartyName: 'Acme Corp',
     effectiveDate: null,
     expirationDate: null,
@@ -90,8 +90,8 @@ describe('CreateContractUseCase', () => {
     );
   });
 
-  it('creates a contract for counsel with self as owner and DRAFT status', async () => {
-    const result = await useCase.execute(counsel, {
+  it('creates a contract for manager with self as owner and DRAFT status', async () => {
+    const result = await useCase.execute(manager, {
       title: 'MSA Acme',
       type: ContractType.MSA,
       counterpartyName: 'Acme Corp',
@@ -102,14 +102,14 @@ describe('CreateContractUseCase', () => {
     );
     expect(contractRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        ownerId: counsel.id,
+        ownerId: manager.id,
         referenceCode: 'CTR-2026-00001',
         status: ContractStatus.DRAFT,
         counterpartyName: 'Acme Corp',
       }),
     );
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.CREATED,
       entityType: EntityType.CONTRACT,
       entityId: createdContract.id,
@@ -121,7 +121,7 @@ describe('CreateContractUseCase', () => {
   });
 
   it('normalizes date fields to UTC midnight', async () => {
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'Dated Contract',
       type: ContractType.NDA,
       counterpartyName: 'Beta LLC',
@@ -141,7 +141,7 @@ describe('CreateContractUseCase', () => {
 
   it('rejects when expirationDate is before effectiveDate', async () => {
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'Invalid Dates',
         type: ContractType.LEASE,
         counterpartyName: 'Landlord',
@@ -154,7 +154,7 @@ describe('CreateContractUseCase', () => {
   });
 
   it('allows equal effective and expiration dates', async () => {
-    await useCase.execute(counsel, {
+    await useCase.execute(manager, {
       title: 'Same Day',
       type: ContractType.VENDOR,
       counterpartyName: 'Vendor',
@@ -195,7 +195,7 @@ describe('CreateContractUseCase', () => {
         counterpartyName: 'Acme',
         ownerId: 'other-owner-id',
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('rejects viewer mutations', async () => {

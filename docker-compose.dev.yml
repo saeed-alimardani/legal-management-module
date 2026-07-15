@@ -1,0 +1,76 @@
+# Development stack — source + uploads on your machine, node_modules in persistent Docker volumes.
+# First start runs npm ci once (~2-5 min). Later starts skip install and come up in seconds.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#   docker compose -f docker-compose.dev.yml exec backend npx prisma db seed   # first time only
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: legal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: legal
+      POSTGRES_PASSWORD: legal
+      POSTGRES_DB: legal_management
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U legal -d legal_management']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: node:20-alpine
+    container_name: legal-backend
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      APP_TIMEZONE: Asia/Tehran
+      DATABASE_URL: postgresql://legal:legal@postgres:5432/legal_management?schema=public
+      JWT_SECRET: change-me-to-a-long-random-secret
+      JWT_EXPIRES_IN: 8h
+      UPLOAD_DIR: /app/uploads
+      FRONTEND_URL: http://localhost:3001
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+      - ./backend/uploads:/app/uploads
+    entrypoint: ['sh', '/app/scripts/docker-dev-entrypoint.sh']
+    command: ['npm', 'run', 'start:dev']
+
+  frontend:
+    image: node:20-alpine
+    container_name: legal-frontend
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+      WATCHPACK_POLLING: 'true'
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    entrypoint: ['sh', '/app/scripts/docker-dev-entrypoint.sh']
+    command: ['npm', 'run', 'dev']
+
+volumes:
+  postgres_data:
+  backend_node_modules:
+  frontend_node_modules:

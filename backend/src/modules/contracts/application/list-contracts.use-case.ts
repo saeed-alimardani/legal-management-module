@@ -19,7 +19,7 @@ export class ListContractsUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, filters: ListContractsFilters) {
-    const scope = this.accessControl.buildOwnerListFilter(user);
+    const scope = this.accessControl.buildContractListScope(user);
     const { items, total } = await this.contractRepository.list(filters, scope);
     const timeZone = getContractResponseTimeZone(this.configService);
 

@@ -32,7 +32,11 @@ export class GetFinancialRecordUseCase {
       throw new NotFoundException('Financial record not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: parentOwnerId });
+    const involved = await this.financialRecordRepository.isUserInvolved(
+      recordId,
+      user.id,
+    );
+    this.accessControl.assertCanViewMatter(user, parentOwnerId, involved);
 
     const timeZone = resolveResponseTimeZone(
       this.configService.get<string>(CONFIG_KEYS.APP_TIMEZONE),

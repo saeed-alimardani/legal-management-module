@@ -49,9 +49,8 @@ export class UpdateReminderUseCase {
       throw new NotFoundException('Reminder not found');
     }
 
-    this.accessControl.assertCanEditDeadline(user, {
-      ownerId: parentOwnerId,
-      assigneeId: existing.deadline.assigneeId,
+    this.accessControl.assertCanEditReminder(user, {
+      createdById: existing.createdById,
     });
 
     this.assertValidUpdate(existing.status, command);

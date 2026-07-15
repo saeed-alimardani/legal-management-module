@@ -16,7 +16,7 @@ export class DeleteDiscussionUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, discussionId: string) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanCreateMatterContent(user);
 
     const existing = await this.discussionRepository.findById(discussionId);
 

@@ -14,8 +14,10 @@ import { CreateDeadlineUseCase } from '../../../src/modules/deadlines/applicatio
 import { PrismaDeadlineRepository } from '../../../src/modules/deadlines/infrastructure/prisma-deadline.repository';
 import { PrismaReminderRepository } from '../../../src/modules/reminders/infrastructure/prisma-reminder.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
+import { MatterInvolvementService } from '../../../src/shared/access-control/matter-involvement.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
+import { createMockMatterInvolvement } from '../../helpers/rbac.helper';
 
 describe('CreateDeadlineUseCase', () => {
   let useCase: CreateDeadlineUseCase;
@@ -27,6 +29,16 @@ describe('CreateDeadlineUseCase', () => {
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
   let reminderRepository: jest.Mocked<Pick<PrismaReminderRepository, 'create'>>;
+  let matterInvolvement: jest.Mocked<
+    Pick<MatterInvolvementService, 'isUserInvolvedInParent'>
+  >;
+
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -62,7 +74,7 @@ describe('CreateDeadlineUseCase', () => {
     contractId: null,
     noticeId: null,
     completedAt: null,
-    createdById: counsel.id,
+    createdById: manager.id,
     createdAt,
     updatedAt: createdAt,
     legalCase: { ownerId: counsel.id, deletedAt: null },
@@ -89,17 +101,20 @@ describe('CreateDeadlineUseCase', () => {
         status: 'PENDING',
         message: null,
         sentAt: null,
-        createdById: counsel.id,
+        createdById: manager.id,
         createdAt,
         updatedAt: createdAt,
         deadline: createdDeadline,
       }),
     };
 
+    matterInvolvement = createMockMatterInvolvement();
+
     useCase = new CreateDeadlineUseCase(
       deadlineRepository as unknown as PrismaDeadlineRepository,
       reminderRepository as unknown as PrismaReminderRepository,
       new AccessControlService(),
+      matterInvolvement as unknown as MatterInvolvementService,
       activityLogService as unknown as ActivityLogService,
       {
         get: jest.fn().mockReturnValue('Asia/Tehran'),
@@ -108,7 +123,7 @@ describe('CreateDeadlineUseCase', () => {
   });
 
   it('creates deadline on owned case and stores dueDate as UTC midnight', async () => {
-    const result = await useCase.execute(counsel, {
+    const result = await useCase.execute(manager, {
       title: 'Hearing',
       dueDate,
       caseId: 'case-1',
@@ -118,7 +133,7 @@ describe('CreateDeadlineUseCase', () => {
       expect.objectContaining({
         dueDate: new Date('2026-07-20T00:00:00.000Z'),
         caseId: 'case-1',
-        createdById: counsel.id,
+        createdById: manager.id,
         status: DeadlineStatus.PENDING,
       }),
     );
@@ -136,20 +151,20 @@ describe('CreateDeadlineUseCase', () => {
     expect(reminderRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         deadlineId: 'dl-1',
-        createdById: counsel.id,
+        createdById: manager.id,
       }),
     );
   });
 
   it('rejects when no parent FK is provided', async () => {
     await expect(
-      useCase.execute(counsel, { title: 'X', dueDate }),
+      useCase.execute(manager, { title: 'X', dueDate }),
     ).rejects.toThrow(BadRequestException);
   });
 
   it('rejects when more than one parent FK is provided', async () => {
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         dueDate,
         caseId: 'case-1',
@@ -162,7 +177,7 @@ describe('CreateDeadlineUseCase', () => {
     deadlineRepository.findParentOwner.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         dueDate,
         caseId: 'missing',
@@ -170,10 +185,31 @@ describe('CreateDeadlineUseCase', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
+  it('allows counsel to create deadline on own matter', async () => {
+    deadlineRepository.findParentOwner.mockResolvedValue({
+      ownerId: counsel.id,
+    });
+
+    const result = await useCase.execute(counsel, {
+      title: 'Prepare filing',
+      dueDate,
+      caseId: 'case-1',
+    });
+
+    expect(result.data.title).toBe('Hearing');
+    expect(deadlineRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdById: counsel.id,
+        caseId: 'case-1',
+      }),
+    );
+  });
+
   it('rejects counsel creating on another counsel case', async () => {
     deadlineRepository.findParentOwner.mockResolvedValue({
       ownerId: otherCounsel.id,
     });
+    matterInvolvement.isUserInvolvedInParent.mockResolvedValue(false);
 
     await expect(
       useCase.execute(counsel, {
@@ -198,7 +234,7 @@ describe('CreateDeadlineUseCase', () => {
     deadlineRepository.userExistsAndActive.mockResolvedValue(false);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         title: 'X',
         dueDate,
         caseId: 'case-1',

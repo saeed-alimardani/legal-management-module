@@ -19,9 +19,11 @@ import { UpdateReminderUseCase } from '../../../src/modules/reminders/applicatio
 import { ReminderWithDeadline } from '../../../src/modules/reminders/domain/reminder.types';
 import { PrismaReminderRepository } from '../../../src/modules/reminders/infrastructure/prisma-reminder.repository';
 import { AccessControlService } from '../../../src/shared/access-control/access-control.service';
+import { MatterInvolvementService } from '../../../src/shared/access-control/matter-involvement.service';
 import { ActivityLogService } from '../../../src/shared/activity-log/activity-log.service';
 import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.type';
 import { createMockConfigService } from '../../helpers/config.helper';
+import { createMockMatterInvolvement } from '../../helpers/rbac.helper';
 
 describe('CreateReminderUseCase', () => {
   let useCase: CreateReminderUseCase;
@@ -30,6 +32,16 @@ describe('CreateReminderUseCase', () => {
     Pick<PrismaDeadlineRepository, 'findById'>
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
+  let matterInvolvement: jest.Mocked<
+    Pick<MatterInvolvementService, 'isUserInvolvedInParent'>
+  >;
+
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
 
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
@@ -104,17 +116,20 @@ describe('CreateReminderUseCase', () => {
       log: jest.fn().mockResolvedValue(undefined),
     };
 
+    matterInvolvement = createMockMatterInvolvement();
+
     useCase = new CreateReminderUseCase(
       reminderRepository as unknown as PrismaReminderRepository,
       deadlineRepository as unknown as PrismaDeadlineRepository,
       new AccessControlService(),
+      matterInvolvement as unknown as MatterInvolvementService,
       activityLogService as unknown as ActivityLogService,
       createMockConfigService() as unknown as ConfigService,
     );
   });
 
-  it('creates reminder on owned deadline and logs activity', async () => {
-    const result = await useCase.execute(counsel, {
+  it('creates reminder on owned deadline as manager and logs activity', async () => {
+    const result = await useCase.execute(manager, {
       deadlineId: deadline.id,
       remindAt,
       message: 'Reminder message',
@@ -126,7 +141,7 @@ describe('CreateReminderUseCase', () => {
         action: AuditAction.CREATED,
         entityType: EntityType.REMINDER,
         entityId: 'rem-1',
-        actorId: counsel.id,
+        actorId: manager.id,
       }),
     );
   });
@@ -135,11 +150,26 @@ describe('CreateReminderUseCase', () => {
     deadlineRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, {
+      useCase.execute(manager, {
         deadlineId: 'missing',
         remindAt,
       }),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it('allows counsel to create reminder on own matter deadline', async () => {
+    const result = await useCase.execute(counsel, {
+      deadlineId: deadline.id,
+      remindAt,
+      message: 'Reminder message',
+    });
+
+    expect(result.data.deadlineId).toBe(deadline.id);
+    expect(reminderRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        createdById: counsel.id,
+      }),
+    );
   });
 
   it('throws 403 when counsel creates on another counsels deadline', async () => {
@@ -147,6 +177,7 @@ describe('CreateReminderUseCase', () => {
       ...deadline,
       legalCase: { ownerId: otherCounsel.id, deletedAt: null },
     });
+    matterInvolvement.isUserInvolvedInParent.mockResolvedValue(false);
 
     await expect(
       useCase.execute(counsel, {
@@ -315,6 +346,13 @@ describe('UpdateReminderUseCase', () => {
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
     email: 'counsel@legal.local',
@@ -371,8 +409,8 @@ describe('UpdateReminderUseCase', () => {
     );
   });
 
-  it('updates reminder and logs activity for owner', async () => {
-    const result = await useCase.execute(counsel, reminder.id, {
+  it('updates reminder and logs activity for manager', async () => {
+    const result = await useCase.execute(manager, reminder.id, {
       message: 'Updated message',
     });
 
@@ -387,6 +425,19 @@ describe('UpdateReminderUseCase', () => {
     );
   });
 
+  it('allows counsel to update a reminder they created', async () => {
+    reminderRepository.update.mockResolvedValue({
+      ...reminder,
+      message: 'Counsel update',
+    });
+
+    const result = await useCase.execute(counsel, reminder.id, {
+      message: 'Counsel update',
+    });
+
+    expect(result.data.message).toBe('Counsel update');
+  });
+
   it('denies unauthorized counsel', async () => {
     await expect(
       useCase.execute(otherCounsel, reminder.id, {
@@ -399,7 +450,7 @@ describe('UpdateReminderUseCase', () => {
     reminderRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', { message: 'Updated message' }),
+      useCase.execute(manager, 'missing', { message: 'Updated message' }),
     ).rejects.toThrow(NotFoundException);
   });
 });

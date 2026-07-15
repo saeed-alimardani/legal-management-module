@@ -68,7 +68,7 @@ export class ContractsController {
   }
 
   @Post()
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Create a new contract' })
   @ApiForbiddenResponse({ description: 'Insufficient role permissions' })
   create(
@@ -104,7 +104,7 @@ export class ContractsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER, UserRole.LEGAL_COUNSEL)
+  @Roles(UserRole.LEGAL_ADMIN, UserRole.LEGAL_MANAGER)
   @ApiOperation({ summary: 'Update contract fields or status' })
   @ApiForbiddenResponse({ description: 'Insufficient permissions' })
   update(

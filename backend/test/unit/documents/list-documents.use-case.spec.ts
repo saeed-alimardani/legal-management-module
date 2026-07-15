@@ -135,12 +135,12 @@ describe('ListDocumentsUseCase', () => {
     );
   });
 
-  it('viewer receives empty scope object', async () => {
+  it('viewer receives scoped counselUserId filter', async () => {
     await useCase.execute(viewer, { caseId: 'case-1' });
 
     expect(documentRepository.list).toHaveBeenCalledWith(
       expect.any(Object),
-      {},
+      { counselUserId: viewer.id },
     );
   });
 

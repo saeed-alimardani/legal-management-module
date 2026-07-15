@@ -146,9 +146,22 @@ describe('GetTaskUseCase', () => {
     );
   });
 
-  it('allows viewer to view any task', async () => {
+  it('denies viewer access to unrelated task', async () => {
     taskRepository.findById.mockResolvedValue(
       buildTask({ legalCase: { ownerId: counsel.id, deletedAt: null } }),
+    );
+
+    await expect(useCase.execute(viewer, 'task-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('allows viewer to view task when assignee', async () => {
+    taskRepository.findById.mockResolvedValue(
+      buildTask({
+        assigneeId: viewer.id,
+        legalCase: { ownerId: counsel.id, deletedAt: null },
+      }),
     );
 
     const result = await useCase.execute(viewer, 'task-1');

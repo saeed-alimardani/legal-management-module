@@ -22,6 +22,13 @@ describe('UpdateDeadlineUseCase', () => {
   >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'log'>>;
 
+  const manager: AuthenticatedUser = {
+    id: 'manager-id',
+    email: 'manager@legal.local',
+    fullName: 'Manager',
+    role: UserRole.LEGAL_MANAGER,
+  };
+
   const counsel: AuthenticatedUser = {
     id: 'counsel-id',
     email: 'counsel@legal.local',
@@ -79,8 +86,8 @@ describe('UpdateDeadlineUseCase', () => {
     );
   });
 
-  it('allows parent owner to update title', async () => {
-    const result = await useCase.execute(counsel, 'dl-1', {
+  it('allows manager to update title', async () => {
+    const result = await useCase.execute(manager, 'dl-1', {
       title: 'Updated Hearing',
     });
 
@@ -97,14 +104,22 @@ describe('UpdateDeadlineUseCase', () => {
     expect(result.data.title).toBe('Updated Hearing');
   });
 
-  it('allows assignee to update', async () => {
+  it('allows counsel creator to update own deadline', async () => {
+    const result = await useCase.execute(counsel, 'dl-1', {
+      title: 'Updated by creator',
+    });
+
+    expect(result.data.title).toBe('Updated by creator');
+  });
+
+  it('rejects counsel assignee from updating', async () => {
     await expect(
       useCase.execute(assignee, 'dl-1', { title: 'By Assignee' }),
-    ).resolves.toBeDefined();
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('completing sets completedAt and logs DEADLINE_COMPLETED', async () => {
-    await useCase.execute(counsel, 'dl-1', {
+    await useCase.execute(manager, 'dl-1', {
       status: DeadlineStatus.COMPLETED,
     });
 
@@ -123,7 +138,7 @@ describe('UpdateDeadlineUseCase', () => {
   });
 
   it('normalizes dueDate to UTC midnight on update', async () => {
-    await useCase.execute(counsel, 'dl-1', {
+    await useCase.execute(manager, 'dl-1', {
       dueDate: new Date('2026-08-01T18:45:00.000Z'),
     });
 
@@ -152,12 +167,12 @@ describe('UpdateDeadlineUseCase', () => {
     deadlineRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing', { title: 'X' }),
+      useCase.execute(manager, 'missing', { title: 'X' }),
     ).rejects.toThrow(NotFoundException);
   });
 
   it('skips activity log when nothing changed', async () => {
-    await useCase.execute(counsel, 'dl-1', { title: existing.title });
+    await useCase.execute(manager, 'dl-1', { title: existing.title });
 
     expect(activityLogService.log).not.toHaveBeenCalled();
   });

@@ -29,8 +29,7 @@ export class UpdateUserUseCase {
     userId: string,
     command: UpdateUserCommand,
   ) {
-    this.assertAdminOrManager(user);
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanManageUsers(user);
 
     const existing = await this.userRepository.findById(userId);
 
@@ -90,11 +89,5 @@ export class UpdateUserUseCase {
     }
 
     return changed;
-  }
-
-  private assertAdminOrManager(user: AuthenticatedUser): void {
-    if (!this.accessControl.isAdminOrManager(user)) {
-      throw new ForbiddenException('Insufficient permissions');
-    }
   }
 }

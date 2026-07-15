@@ -26,7 +26,8 @@ export class GetCaseTimelineUseCase {
       throw new NotFoundException('Case not found');
     }
 
-    this.accessControl.assertCanView(user, { ownerId: legalCase.ownerId });
+    const involved = await this.caseRepository.isUserInvolved(caseId, user.id);
+    this.accessControl.assertCanViewMatter(user, legalCase.ownerId, involved);
 
     const { items, total } = await this.activityLogService.list(
       {

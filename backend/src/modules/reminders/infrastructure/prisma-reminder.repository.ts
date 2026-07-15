@@ -69,7 +69,7 @@ export class PrismaReminderRepository {
       ...this.buildViewWhere(filters),
     };
 
-    const orderBy = this.buildOrderBy(filters.view);
+    const orderBy = this.buildOrderBy(filters.view, filters.status);
     const skip = (filters.page - 1) * filters.limit;
 
     const [items, total] = await Promise.all([
@@ -154,6 +154,10 @@ export class PrismaReminderRepository {
   private buildViewWhere(
     filters: ListRemindersFilters,
   ): Prisma.ReminderWhereInput {
+    if (filters.status) {
+      return { status: filters.status };
+    }
+
     switch (filters.view) {
       case ReminderView.UPCOMING:
         return {
@@ -180,17 +184,23 @@ export class PrismaReminderRepository {
 
   private buildOrderBy(
     view?: ReminderView,
+    status?: ReminderStatus,
   ): Prisma.ReminderOrderByWithRelationInput {
-    if (view === ReminderView.SENT) {
+    if (status === ReminderStatus.SENT || view === ReminderView.SENT) {
       return { sentAt: 'desc' };
     }
 
     if (
       view === ReminderView.UPCOMING ||
       view === ReminderView.DUE ||
-      view === ReminderView.ASSIGNED_TO_ME
+      view === ReminderView.ASSIGNED_TO_ME ||
+      status === ReminderStatus.PENDING
     ) {
       return { remindAt: 'asc' };
+    }
+
+    if (status === ReminderStatus.DISMISSED) {
+      return { updatedAt: 'desc' };
     }
 
     return { createdAt: 'desc' };

@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import { AuthenticatedUser } from '../types/authenticated-user.type';
 
 export interface OwnedResource {
@@ -20,8 +20,26 @@ export interface DiscussionResource {
   authorId: string;
 }
 
+export interface FinancialRecordResource {
+  createdById: string;
+}
+
+export interface CreatedResource {
+  createdById: string;
+}
+
 @Injectable()
 export class AccessControlService {
+  private isScopedReader(user: AuthenticatedUser): boolean {
+    return (
+      user.role === UserRole.LEGAL_COUNSEL || user.role === UserRole.VIEWER
+    );
+  }
+
+  isAdmin(user: AuthenticatedUser): boolean {
+    return user.role === UserRole.LEGAL_ADMIN;
+  }
+
   isAdminOrManager(user: AuthenticatedUser): boolean {
     return (
       user.role === UserRole.LEGAL_ADMIN || user.role === UserRole.LEGAL_MANAGER
@@ -32,17 +50,39 @@ export class AccessControlService {
     return user.role === UserRole.VIEWER;
   }
 
-  canMutate(user: AuthenticatedUser): boolean {
+  hasScopedReadAccess(user: AuthenticatedUser): boolean {
+    return this.isScopedReader(user);
+  }
+
+  canManageCoreEntities(user: AuthenticatedUser): boolean {
+    return this.isAdminOrManager(user);
+  }
+
+  canCreateMatterContent(user: AuthenticatedUser): boolean {
     return user.role !== UserRole.VIEWER;
   }
 
+  canManageUsers(user: AuthenticatedUser): boolean {
+    return this.isAdmin(user);
+  }
+
+  canMutate(user: AuthenticatedUser): boolean {
+    return this.canManageCoreEntities(user);
+  }
+
+  canViewAll(user: AuthenticatedUser): boolean {
+    return this.isAdminOrManager(user);
+  }
+
   canView(user: AuthenticatedUser, resource: OwnedResource): boolean {
-    if (this.isAdminOrManager(user) || this.isViewer(user)) {
+    if (this.isAdminOrManager(user)) {
       return true;
     }
 
-    if (user.role === UserRole.LEGAL_COUNSEL) {
-      return resource.ownerId === user.id || resource.assigneeId === user.id;
+    if (this.isScopedReader(user)) {
+      return (
+        resource.ownerId === user.id || resource.assigneeId === user.id
+      );
     }
 
     return false;
@@ -52,19 +92,31 @@ export class AccessControlService {
     user: AuthenticatedUser,
     resource: Pick<OwnedResource, 'ownerId'>,
   ): boolean {
-    if (this.isAdminOrManager(user)) {
-      return true;
-    }
-
-    if (user.role === UserRole.LEGAL_COUNSEL) {
-      return resource.ownerId === user.id;
-    }
-
-    return false;
+    return this.isAdminOrManager(user);
   }
 
   canReassign(user: AuthenticatedUser): boolean {
     return this.isAdminOrManager(user);
+  }
+
+  assertCanManageCoreEntities(user: AuthenticatedUser): void {
+    if (!this.canManageCoreEntities(user)) {
+      throw new ForbiddenException(
+        'You do not have permission to manage this resource',
+      );
+    }
+  }
+
+  assertCanCreateMatterContent(user: AuthenticatedUser): void {
+    if (!this.canCreateMatterContent(user)) {
+      throw new ForbiddenException('Read-only users cannot modify data');
+    }
+  }
+
+  assertCanManageUsers(user: AuthenticatedUser): void {
+    if (!this.canManageUsers(user)) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
   }
 
   assertCanView(user: AuthenticatedUser, resource: OwnedResource): void {
@@ -85,9 +137,7 @@ export class AccessControlService {
   }
 
   assertCanMutate(user: AuthenticatedUser): void {
-    if (!this.canMutate(user)) {
-      throw new ForbiddenException('Read-only users cannot modify data');
-    }
+    this.assertCanManageCoreEntities(user);
   }
 
   assertCanReassign(user: AuthenticatedUser): void {
@@ -98,48 +148,91 @@ export class AccessControlService {
     }
   }
 
-  /** List filter for owner-based entities (cases, contracts, notices). */
-  buildOwnerListFilter(user: AuthenticatedUser): { ownerId?: string } {
-    if (user.role === UserRole.LEGAL_COUNSEL) {
-      return { ownerId: user.id };
+  assertCanViewMatter(
+    user: AuthenticatedUser,
+    ownerId: string,
+    involved: boolean,
+  ): void {
+    if (this.canView(user, { ownerId })) {
+      return;
     }
 
-    return {};
-  }
-
-  /** Counsel sees financial records on cases/contracts they own. */
-  buildFinancialRecordListFilter(user: AuthenticatedUser): {
-    ownerId?: string;
-  } {
-    if (user.role === UserRole.LEGAL_COUNSEL) {
-      return { ownerId: user.id };
+    if (this.isScopedReader(user) && involved) {
+      return;
     }
 
-    return {};
+    throw new ForbiddenException('You do not have access to this resource');
   }
 
-  /**
-   * Counsel may see deadlines they own via parent matter or are assigned to.
-   * Admin/Manager/Viewer → no extra filter (full read scope).
-   */
-  buildDeadlineListFilter(user: AuthenticatedUser): {
-    counselUserId?: string;
-  } {
-    if (user.role === UserRole.LEGAL_COUNSEL) {
+  assertCanContributeToMatter(
+    user: AuthenticatedUser,
+    ownerId: string,
+    involved: boolean,
+  ): void {
+    this.assertCanCreateMatterContent(user);
+    this.assertCanViewMatter(user, ownerId, involved);
+  }
+
+  buildOwnerListFilter(user: AuthenticatedUser): { counselUserId?: string } {
+    if (this.isScopedReader(user)) {
       return { counselUserId: user.id };
     }
 
     return {};
   }
 
-  /** Parent owner or assignee may update; Viewer never. */
-  canEditDeadline(user: AuthenticatedUser, resource: OwnedResource): boolean {
+  /** Admin/manager: all matters. Counsel/viewer: owned matters only. */
+  buildCaseListScope(user: AuthenticatedUser): Prisma.LegalCaseWhereInput {
+    if (this.isScopedReader(user)) {
+      return { ownerId: user.id };
+    }
+
+    return {};
+  }
+
+  buildContractListScope(user: AuthenticatedUser): Prisma.ContractWhereInput {
+    if (this.isScopedReader(user)) {
+      return { ownerId: user.id };
+    }
+
+    return {};
+  }
+
+  buildNoticeListScope(user: AuthenticatedUser): Prisma.LegalNoticeWhereInput {
+    if (this.isScopedReader(user)) {
+      return { ownerId: user.id };
+    }
+
+    return {};
+  }
+
+  buildFinancialRecordListFilter(user: AuthenticatedUser): {
+    counselUserId?: string;
+  } {
+    if (this.isScopedReader(user)) {
+      return { counselUserId: user.id };
+    }
+
+    return {};
+  }
+
+  buildDeadlineListFilter(user: AuthenticatedUser): {
+    counselUserId?: string;
+  } {
+    if (this.isScopedReader(user)) {
+      return { counselUserId: user.id };
+    }
+
+    return {};
+  }
+
+  canEditDeadline(user: AuthenticatedUser, resource: CreatedResource): boolean {
     if (this.isAdminOrManager(user)) {
       return true;
     }
 
     if (user.role === UserRole.LEGAL_COUNSEL) {
-      return resource.ownerId === user.id || resource.assigneeId === user.id;
+      return resource.createdById === user.id;
     }
 
     return false;
@@ -147,7 +240,7 @@ export class AccessControlService {
 
   assertCanEditDeadline(
     user: AuthenticatedUser,
-    resource: OwnedResource,
+    resource: CreatedResource,
   ): void {
     if (!this.canEditDeadline(user, resource)) {
       throw new ForbiddenException(
@@ -156,43 +249,52 @@ export class AccessControlService {
     }
   }
 
-  /** Cancel requires parent ownership (or admin/manager). */
-  assertCanCancelDeadline(
-    user: AuthenticatedUser,
-    resource: Pick<OwnedResource, 'ownerId'>,
-  ): void {
-    this.assertCanEdit(user, resource);
+  canCancelDeadline(user: AuthenticatedUser, resource: CreatedResource): boolean {
+    return this.canEditDeadline(user, resource);
   }
 
-  /**
-   * Counsel may see tasks on matters they own or tasks assigned to them.
-   * Admin/Manager/Viewer → no extra filter (full read scope).
-   */
+  assertCanCancelDeadline(
+    user: AuthenticatedUser,
+    resource: CreatedResource,
+  ): void {
+    if (!this.canCancelDeadline(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to cancel this deadline',
+      );
+    }
+  }
+
+  canEditReminder(user: AuthenticatedUser, resource: CreatedResource): boolean {
+    return this.canEditDeadline(user, resource);
+  }
+
+  assertCanEditReminder(
+    user: AuthenticatedUser,
+    resource: CreatedResource,
+  ): void {
+    if (!this.canEditReminder(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to edit this reminder',
+      );
+    }
+  }
+
+  assertCanViewActivityLogs(user: AuthenticatedUser): void {
+    this.assertCanManageUsers(user);
+  }
+
   buildTaskListFilter(user: AuthenticatedUser): {
     counselUserId?: string;
   } {
-    if (user.role === UserRole.LEGAL_COUNSEL) {
+    if (this.isScopedReader(user)) {
       return { counselUserId: user.id };
     }
 
     return {};
   }
 
-  /** Admin/Manager, parent owner, assignee, or creator may update. */
   canEditTask(user: AuthenticatedUser, resource: TaskResource): boolean {
-    if (this.isAdminOrManager(user)) {
-      return true;
-    }
-
-    if (user.role === UserRole.LEGAL_COUNSEL) {
-      return (
-        resource.ownerId === user.id ||
-        resource.assigneeId === user.id ||
-        resource.createdById === user.id
-      );
-    }
-
-    return false;
+    return this.isAdminOrManager(user);
   }
 
   assertCanEditTask(user: AuthenticatedUser, resource: TaskResource): void {
@@ -203,20 +305,11 @@ export class AccessControlService {
     }
   }
 
-  /** Cancel requires admin/manager or creator. */
   canCancelTask(
     user: AuthenticatedUser,
     resource: Pick<TaskResource, 'createdById'>,
   ): boolean {
-    if (this.isAdminOrManager(user)) {
-      return true;
-    }
-
-    if (user.role === UserRole.LEGAL_COUNSEL) {
-      return resource.createdById === user.id;
-    }
-
-    return false;
+    return this.isAdminOrManager(user);
   }
 
   assertCanCancelTask(
@@ -230,21 +323,16 @@ export class AccessControlService {
     }
   }
 
-  /**
-   * Counsel may see documents on matters they own.
-   * Admin/Manager/Viewer → no extra filter.
-   */
   buildDocumentListFilter(user: AuthenticatedUser): {
     counselUserId?: string;
   } {
-    if (user.role === UserRole.LEGAL_COUNSEL) {
+    if (this.isScopedReader(user)) {
       return { counselUserId: user.id };
     }
 
     return {};
   }
 
-  /** Soft-delete: admin/manager or uploader. */
   canDeleteDocument(
     user: AuthenticatedUser,
     resource: Pick<DocumentResource, 'uploadedById'>,
@@ -271,21 +359,16 @@ export class AccessControlService {
     }
   }
 
-  /**
-   * Counsel may see discussions on matters they own.
-   * Admin/Manager/Viewer → no extra filter.
-   */
   buildDiscussionListFilter(user: AuthenticatedUser): {
     counselUserId?: string;
   } {
-    if (user.role === UserRole.LEGAL_COUNSEL) {
+    if (this.isScopedReader(user)) {
       return { counselUserId: user.id };
     }
 
     return {};
   }
 
-  /** Admin/Manager or author may update or delete. */
   canEditDiscussion(
     user: AuthenticatedUser,
     resource: Pick<DiscussionResource, 'authorId'>,
@@ -308,6 +391,32 @@ export class AccessControlService {
     if (!this.canEditDiscussion(user, resource)) {
       throw new ForbiddenException(
         'You do not have permission to edit this discussion',
+      );
+    }
+  }
+
+  canEditFinancialRecord(
+    user: AuthenticatedUser,
+    resource: Pick<FinancialRecordResource, 'createdById'>,
+  ): boolean {
+    if (this.isAdminOrManager(user)) {
+      return true;
+    }
+
+    if (user.role === UserRole.LEGAL_COUNSEL) {
+      return resource.createdById === user.id;
+    }
+
+    return false;
+  }
+
+  assertCanEditFinancialRecord(
+    user: AuthenticatedUser,
+    resource: Pick<FinancialRecordResource, 'createdById'>,
+  ): void {
+    if (!this.canEditFinancialRecord(user, resource)) {
+      throw new ForbiddenException(
+        'You do not have permission to edit this financial record',
       );
     }
   }

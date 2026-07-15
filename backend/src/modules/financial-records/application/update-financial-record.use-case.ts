@@ -8,11 +8,7 @@ import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto'
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { toUtcDateOnly } from '../../../shared/utils/date-boundary.util';
 import { PrismaFinancialRecordRepository } from '../infrastructure/prisma-financial-record.repository';
-import {
-  resolveParentOwnerId,
-  resolveResponseTimeZone,
-  toFinancialRecordResponse,
-} from './financial-record.helpers';
+import { resolveResponseTimeZone, toFinancialRecordResponse } from './financial-record.helpers';
 
 export interface UpdateFinancialRecordCommand {
   title?: string;
@@ -37,7 +33,7 @@ export class UpdateFinancialRecordUseCase {
     recordId: string,
     command: UpdateFinancialRecordCommand,
   ) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanCreateMatterContent(user);
 
     const existing = await this.financialRecordRepository.findById(recordId);
 
@@ -45,13 +41,9 @@ export class UpdateFinancialRecordUseCase {
       throw new NotFoundException('Financial record not found');
     }
 
-    const parentOwnerId = resolveParentOwnerId(existing);
-
-    if (!parentOwnerId) {
-      throw new NotFoundException('Financial record not found');
-    }
-
-    this.accessControl.assertCanEdit(user, { ownerId: parentOwnerId });
+    this.accessControl.assertCanEditFinancialRecord(user, {
+      createdById: existing.createdById,
+    });
 
     const updateInput = {
       ...(command.title !== undefined ? { title: command.title } : {}),

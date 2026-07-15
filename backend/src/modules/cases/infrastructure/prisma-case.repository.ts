@@ -2,10 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
-  formatReferenceCode,
-  getNextReferenceSequence,
-  REFERENCE_CODE_PREFIX,
-} from '../../../shared/utils/reference-code.util';
+  buildCounselCaseWhere,
+} from '../../../shared/access-control/counsel-involvement.where';
 import {
   CreateCaseInput,
   CreateCasePartyInput,
@@ -13,6 +11,11 @@ import {
   ListCasesFilters,
   UpdateCaseInput,
 } from '../domain/case.types';
+import {
+  formatReferenceCode,
+  getNextReferenceSequence,
+  REFERENCE_CODE_PREFIX,
+} from '../../../shared/utils/reference-code.util';
 
 const caseIncludeParties = {
   parties: {
@@ -83,6 +86,18 @@ export class PrismaCaseRepository {
       where: { id },
       include: caseIncludeParties,
     });
+  }
+
+  async isUserInvolved(caseId: string, userId: string): Promise<boolean> {
+    const count = await this.prisma.legalCase.count({
+      where: {
+        id: caseId,
+        deletedAt: null,
+        ...buildCounselCaseWhere(userId),
+      },
+    });
+
+    return count > 0;
   }
 
   async list(

@@ -5,7 +5,6 @@ import { ActivityLogService } from '../../../shared/activity-log/activity-log.se
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
 import { PrismaFinancialRecordRepository } from '../infrastructure/prisma-financial-record.repository';
-import { resolveParentOwnerId } from './financial-record.helpers';
 
 @Injectable()
 export class DeleteFinancialRecordUseCase {
@@ -16,7 +15,7 @@ export class DeleteFinancialRecordUseCase {
   ) {}
 
   async execute(user: AuthenticatedUser, recordId: string) {
-    this.accessControl.assertCanMutate(user);
+    this.accessControl.assertCanCreateMatterContent(user);
 
     const existing = await this.financialRecordRepository.findById(recordId);
 
@@ -24,13 +23,9 @@ export class DeleteFinancialRecordUseCase {
       throw new NotFoundException('Financial record not found');
     }
 
-    const parentOwnerId = resolveParentOwnerId(existing);
-
-    if (!parentOwnerId) {
-      throw new NotFoundException('Financial record not found');
-    }
-
-    this.accessControl.assertCanEdit(user, { ownerId: parentOwnerId });
+    this.accessControl.assertCanEditFinancialRecord(user, {
+      createdById: existing.createdById,
+    });
 
     await this.financialRecordRepository.softDelete(recordId);
 

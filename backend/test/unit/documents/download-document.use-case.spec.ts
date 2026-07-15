@@ -10,7 +10,7 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('DownloadDocumentUseCase', () => {
   let useCase: DownloadDocumentUseCase;
   let documentRepository: jest.Mocked<
-    Pick<PrismaDocumentRepository, 'findById'>
+    Pick<PrismaDocumentRepository, 'findById' | 'isUserInvolved'>
   >;
   let fileStorage: jest.Mocked<Pick<FileStoragePort, 'save' | 'read'>>;
 
@@ -61,6 +61,7 @@ describe('DownloadDocumentUseCase', () => {
   beforeEach(() => {
     documentRepository = {
       findById: jest.fn().mockResolvedValue(existingDocument),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     fileStorage = {
@@ -89,11 +90,10 @@ describe('DownloadDocumentUseCase', () => {
     expect(fileStorage.read).toHaveBeenCalledWith(storageKey);
   });
 
-  it('allows viewer to download document', async () => {
-    const result = await useCase.execute(viewer, 'doc-1');
-
-    expect(result.buffer).toBe(fileBuffer);
-    expect(fileStorage.read).toHaveBeenCalledWith(storageKey);
+  it('denies viewer download for unrelated document', async () => {
+    await expect(useCase.execute(viewer, 'doc-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws 403 for unrelated counsel', async () => {

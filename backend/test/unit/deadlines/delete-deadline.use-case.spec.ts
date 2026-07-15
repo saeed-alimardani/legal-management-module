@@ -78,11 +78,11 @@ describe('DeleteDeadlineUseCase', () => {
   });
 
   it('cancels deadline for parent owner and logs DELETED', async () => {
-    const result = await useCase.execute(counsel, 'dl-1');
+    const result = await useCase.execute(manager, 'dl-1');
 
     expect(deadlineRepository.cancel).toHaveBeenCalledWith('dl-1');
     expect(activityLogService.log).toHaveBeenCalledWith({
-      actorId: counsel.id,
+      actorId: manager.id,
       action: AuditAction.DELETED,
       entityType: EntityType.DEADLINE,
       entityId: 'dl-1',
@@ -100,7 +100,14 @@ describe('DeleteDeadlineUseCase', () => {
     });
   });
 
-  it('denies assignee-only cancel (parent owner required)', async () => {
+  it('allows counsel to cancel a deadline they created', async () => {
+    const result = await useCase.execute(counsel, 'dl-1');
+
+    expect(deadlineRepository.cancel).toHaveBeenCalledWith('dl-1');
+    expect(result.data).toEqual({ success: true });
+  });
+
+  it('denies assignee-only cancel when not the creator', async () => {
     await expect(useCase.execute(assignee, 'dl-1')).rejects.toThrow(
       ForbiddenException,
     );
@@ -109,7 +116,7 @@ describe('DeleteDeadlineUseCase', () => {
   it('throws when deadline missing', async () => {
     deadlineRepository.findById.mockResolvedValue(null);
 
-    await expect(useCase.execute(counsel, 'missing')).rejects.toThrow(
+    await expect(useCase.execute(manager, 'missing')).rejects.toThrow(
       NotFoundException,
     );
   });

@@ -12,7 +12,7 @@ This project was built with assistance from **Cursor AI** (Claude). AI tools acc
 | **Claude (via Cursor)** | Code generation, architecture planning, refactoring, test writing |
 | **Prisma CLI** | Schema design, migrations, seed data |
 | **Jest + Supertest** | Unit, integration, and e2e test execution |
-| **Docker Compose** | Local PostgreSQL + app container orchestration |
+| **Docker Compose** | Local PostgreSQL + backend + frontend orchestration |
 | **Swagger (@nestjs/swagger)** | Auto-generated API documentation |
 
 ---
@@ -45,15 +45,20 @@ Read architecture plan for phase → AI generates code → Human review → Qual
 | 6 | Tasks + Documents + Activity Log read API |
 | 7 | Dashboard + Offboarding + seed + core tests + docs |
 | 8 | Users, Discussions, Financial Records, Reminders + full test pyramid (791 tests) |
+| 9 | Monorepo restructure (`backend/` + `frontend/`), CORS, Next.js UI for all API modules, Docker Compose for full stack |
 
 ### Quality Gate (after every phase)
 
 ```bash
+cd backend
 npm run build
 npm run prisma:validate    # when schema changed
 npm test                   # unit
 npm run test:integration   # when repos changed
 npm run test:e2e           # when endpoints changed
+
+cd ../frontend
+npm run build
 ```
 
 ### Human Review Checklist
@@ -181,8 +186,8 @@ These decisions were mine, not delegated to AI:
 ## 6. Exploring the Project
 
 1. Follow [README.md](./README.md) for Docker or local setup.
-2. Run `npx prisma migrate deploy && npx prisma db seed`.
-3. Open Swagger at `http://localhost:3000/api/docs`.
+2. Run `cd backend && npx prisma migrate deploy && npx prisma db seed`.
+3. Open the UI at `http://localhost:3001` or Swagger at `http://localhost:3000/api/docs`.
 4. Login with `counsel@legal.local` / `Password123!`.
 5. Read [README.md](./README.md) for full architecture and API reference.
 

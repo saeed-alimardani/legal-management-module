@@ -4,6 +4,7 @@ import { AuditAction, EntityType, ReminderStatus } from '@prisma/client';
 import { CONFIG_KEYS } from '../../../config/constants';
 import { PrismaDeadlineRepository } from '../../deadlines/infrastructure/prisma-deadline.repository';
 import { AccessControlService } from '../../../shared/access-control/access-control.service';
+import { MatterInvolvementService } from '../../../shared/access-control/matter-involvement.service';
 import { ActivityLogService } from '../../../shared/activity-log/activity-log.service';
 import { buildSingleResponse } from '../../../shared/dto/paginated-response.dto';
 import { AuthenticatedUser } from '../../../shared/types/authenticated-user.type';
@@ -26,13 +27,12 @@ export class CreateReminderUseCase {
     private readonly reminderRepository: PrismaReminderRepository,
     private readonly deadlineRepository: PrismaDeadlineRepository,
     private readonly accessControl: AccessControlService,
+    private readonly matterInvolvement: MatterInvolvementService,
     private readonly activityLogService: ActivityLogService,
     private readonly configService: ConfigService,
   ) {}
 
   async execute(user: AuthenticatedUser, command: CreateReminderCommand) {
-    this.accessControl.assertCanMutate(user);
-
     const deadline = await this.deadlineRepository.findById(command.deadlineId);
 
     if (!deadline) {
@@ -45,7 +45,19 @@ export class CreateReminderUseCase {
       throw new NotFoundException('Deadline not found');
     }
 
-    this.accessControl.assertCanEdit(user, { ownerId: parentOwnerId });
+    const involved = await this.matterInvolvement.isUserInvolvedInParent(
+      {
+        caseId: deadline.caseId,
+        contractId: deadline.contractId,
+        noticeId: deadline.noticeId,
+      },
+      user.id,
+    );
+    this.accessControl.assertCanContributeToMatter(
+      user,
+      parentOwnerId,
+      involved,
+    );
 
     const reminder = await this.reminderRepository.create({
       deadlineId: command.deadlineId,

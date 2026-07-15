@@ -15,7 +15,9 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 
 describe('GetCaseTimelineUseCase', () => {
   let useCase: GetCaseTimelineUseCase;
-  let caseRepository: jest.Mocked<Pick<PrismaCaseRepository, 'findById'>>;
+  let caseRepository: jest.Mocked<
+    Pick<PrismaCaseRepository, 'findById' | 'isUserInvolved'>
+  >;
   let activityLogService: jest.Mocked<Pick<ActivityLogService, 'list'>>;
 
   const counsel: AuthenticatedUser = {
@@ -64,6 +66,7 @@ describe('GetCaseTimelineUseCase', () => {
   beforeEach(() => {
     caseRepository = {
       findById: jest.fn().mockResolvedValue(legalCase),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     activityLogService = {

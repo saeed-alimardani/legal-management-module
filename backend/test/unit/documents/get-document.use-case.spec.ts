@@ -10,7 +10,7 @@ import { AuthenticatedUser } from '../../../src/shared/types/authenticated-user.
 describe('GetDocumentUseCase', () => {
   let useCase: GetDocumentUseCase;
   let documentRepository: jest.Mocked<
-    Pick<PrismaDocumentRepository, 'findById'>
+    Pick<PrismaDocumentRepository, 'findById' | 'isUserInvolved'>
   >;
   let configService: jest.Mocked<Pick<ConfigService, 'get'>>;
 
@@ -59,6 +59,7 @@ describe('GetDocumentUseCase', () => {
   beforeEach(() => {
     documentRepository = {
       findById: jest.fn().mockResolvedValue(existingDocument),
+      isUserInvolved: jest.fn().mockResolvedValue(false),
     };
 
     configService = {
@@ -80,10 +81,10 @@ describe('GetDocumentUseCase', () => {
     expect(result.data).not.toHaveProperty('deletedAt');
   });
 
-  it('allows viewer to view document', async () => {
-    const result = await useCase.execute(viewer, 'doc-1');
-
-    expect(result.data.id).toBe('doc-1');
+  it('denies viewer access to unrelated document', async () => {
+    await expect(useCase.execute(viewer, 'doc-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('throws 403 for unrelated counsel', async () => {

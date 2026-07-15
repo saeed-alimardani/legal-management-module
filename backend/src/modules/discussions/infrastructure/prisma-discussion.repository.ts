@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { buildCounselDiscussionWhere } from '../../../shared/access-control/counsel-involvement.where';
 import {
   CreateDiscussionInput,
   DiscussionListScope,
@@ -38,6 +39,18 @@ export class PrismaDiscussionRepository {
       where: { id, deletedAt: null },
       include: parentInclude,
     });
+  }
+
+  async isUserInvolved(discussionId: string, userId: string): Promise<boolean> {
+    const count = await this.prisma.discussion.count({
+      where: {
+        id: discussionId,
+        deletedAt: null,
+        ...buildCounselDiscussionWhere(userId),
+      },
+    });
+
+    return count > 0;
   }
 
   async list(
@@ -123,14 +136,6 @@ export class PrismaDiscussionRepository {
       return {};
     }
 
-    const userId = scope.counselUserId;
-
-    return {
-      OR: [
-        { legalCase: { ownerId: userId, deletedAt: null } },
-        { contract: { ownerId: userId, deletedAt: null } },
-        { notice: { ownerId: userId, deletedAt: null } },
-      ],
-    };
+    return buildCounselDiscussionWhere(scope.counselUserId);
   }
 }

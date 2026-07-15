@@ -110,7 +110,7 @@ describe('UpdateTaskUseCase', () => {
       buildTask({ status: TaskStatus.IN_PROGRESS }),
     );
 
-    await useCase.execute(counsel, 'task-1', {
+    await useCase.execute(manager, 'task-1', {
       status: TaskStatus.IN_PROGRESS,
     });
 
@@ -130,7 +130,7 @@ describe('UpdateTaskUseCase', () => {
   it('logs UPDATED when only title changes', async () => {
     taskRepository.update.mockResolvedValue(buildTask({ title: 'New title' }));
 
-    await useCase.execute(counsel, 'task-1', { title: 'New title' });
+    await useCase.execute(manager, 'task-1', { title: 'New title' });
 
     expect(activityLogService.log).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -148,7 +148,7 @@ describe('UpdateTaskUseCase', () => {
       buildTask({ status: TaskStatus.DONE, completedAt: new Date() }),
     );
 
-    await useCase.execute(counsel, 'task-1', { status: TaskStatus.DONE });
+    await useCase.execute(manager, 'task-1', { status: TaskStatus.DONE });
 
     const updateInput = (taskRepository.update as jest.Mock).mock.calls[0][1];
     expect(updateInput.completedAt).toBeInstanceOf(Date);
@@ -162,7 +162,7 @@ describe('UpdateTaskUseCase', () => {
       buildTask({ status: TaskStatus.TODO, completedAt: null }),
     );
 
-    await useCase.execute(counsel, 'task-1', { status: TaskStatus.TODO });
+    await useCase.execute(manager, 'task-1', { status: TaskStatus.TODO });
 
     const updateInput = (taskRepository.update as jest.Mock).mock.calls[0][1];
     expect(updateInput.completedAt).toBeNull();
@@ -176,7 +176,7 @@ describe('UpdateTaskUseCase', () => {
       buildTask({ status: TaskStatus.IN_PROGRESS }),
     );
 
-    await useCase.execute(counsel, 'task-1', {
+    await useCase.execute(manager, 'task-1', {
       status: TaskStatus.IN_PROGRESS,
     });
 
@@ -189,19 +189,18 @@ describe('UpdateTaskUseCase', () => {
     taskRepository.findById.mockResolvedValue(buildTask({ title }));
     taskRepository.update.mockResolvedValue(buildTask({ title }));
 
-    await useCase.execute(counsel, 'task-1', { title });
+    await useCase.execute(manager, 'task-1', { title });
 
     expect(activityLogService.log).not.toHaveBeenCalled();
   });
 
-  it('allows the assignee to edit the task', async () => {
+  it('denies counsel assignee from editing the task', async () => {
     const assigneeCounsel: AuthenticatedUser = {
       id: 'assignee-id',
       email: 'assignee@legal.local',
       fullName: 'Assignee',
       role: UserRole.LEGAL_COUNSEL,
     };
-    // Task owner is different from assignee
     taskRepository.findById.mockResolvedValue(
       buildTask({
         assigneeId: assigneeCounsel.id,
@@ -209,18 +208,13 @@ describe('UpdateTaskUseCase', () => {
         legalCase: { ownerId: otherCounsel.id, deletedAt: null },
       }),
     );
-    taskRepository.update.mockResolvedValue(
-      buildTask({ title: 'Updated', assigneeId: assigneeCounsel.id }),
-    );
 
-    const result = await useCase.execute(assigneeCounsel, 'task-1', {
-      title: 'Updated',
-    });
-
-    expect(result.data).toBeDefined();
+    await expect(
+      useCase.execute(assigneeCounsel, 'task-1', { title: 'Updated' }),
+    ).rejects.toThrow(ForbiddenException);
   });
 
-  it('allows the creator to edit the task even if not owner or assignee', async () => {
+  it('denies counsel creator from editing the task', async () => {
     const creator: AuthenticatedUser = {
       id: 'creator-id',
       email: 'creator@legal.local',
@@ -234,13 +228,10 @@ describe('UpdateTaskUseCase', () => {
         legalCase: { ownerId: otherCounsel.id, deletedAt: null },
       }),
     );
-    taskRepository.update.mockResolvedValue(buildTask({ title: 'Updated' }));
 
-    const result = await useCase.execute(creator, 'task-1', {
-      title: 'Updated',
-    });
-
-    expect(result.data).toBeDefined();
+    await expect(
+      useCase.execute(creator, 'task-1', { title: 'Updated' }),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('throws 403 when non-assignee, non-owner, non-creator counsel tries to edit', async () => {
@@ -267,7 +258,7 @@ describe('UpdateTaskUseCase', () => {
     taskRepository.findById.mockResolvedValue(null);
 
     await expect(
-      useCase.execute(counsel, 'missing-task', { title: 'X' }),
+      useCase.execute(manager, 'missing-task', { title: 'X' }),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -281,7 +272,7 @@ describe('UpdateTaskUseCase', () => {
     );
 
     await expect(
-      useCase.execute(counsel, 'task-1', { title: 'X' }),
+      useCase.execute(manager, 'task-1', { title: 'X' }),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -289,7 +280,7 @@ describe('UpdateTaskUseCase', () => {
     taskRepository.userExistsAndActive.mockResolvedValue(false);
 
     await expect(
-      useCase.execute(counsel, 'task-1', { assigneeId: 'inactive-user' }),
+      useCase.execute(manager, 'task-1', { assigneeId: 'inactive-user' }),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -333,7 +324,7 @@ describe('UpdateTaskUseCase', () => {
       }),
     );
 
-    const result = await useCase.execute(counsel, 'task-1', { title: 'New' });
+    const result = await useCase.execute(manager, 'task-1', { title: 'New' });
 
     expect(result.data.createdAtPersian).toMatch(
       /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/,
