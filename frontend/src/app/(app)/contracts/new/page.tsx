@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState } from '@/components/States';
 import { CONTRACT_STATUSES, CONTRACT_TYPES } from '@/lib/enums';
 import { contractsApi } from '@/lib/services';
@@ -70,15 +71,15 @@ export default function NewContractPage() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
             <label className="label" htmlFor="effectiveDate">Effective Date</label>
-            <input id="effectiveDate" name="effectiveDate" type="date" className="w-full" />
+            <PersianDateInput id="effectiveDate" name="effectiveDate" />
           </div>
           <div>
             <label className="label" htmlFor="expirationDate">Expiration Date</label>
-            <input id="expirationDate" name="expirationDate" type="date" className="w-full" />
+            <PersianDateInput id="expirationDate" name="expirationDate" />
           </div>
           <div>
             <label className="label" htmlFor="renewalDate">Renewal Date</label>
-            <input id="renewalDate" name="renewalDate" type="date" className="w-full" />
+            <PersianDateInput id="renewalDate" name="renewalDate" />
           </div>
         </div>
         <div className="flex gap-3">

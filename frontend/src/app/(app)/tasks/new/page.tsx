@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { loadUserDirectory } from '@/lib/lookups';
 import {
@@ -104,7 +105,7 @@ export default function NewTaskPage() {
           </div>
           <div>
             <label className="label" htmlFor="dueDate">Due Date</label>
-            <input id="dueDate" name="dueDate" type="date" className="w-full" />
+            <PersianDateInput id="dueDate" name="dueDate" />
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

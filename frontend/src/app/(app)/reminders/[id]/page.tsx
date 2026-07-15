@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateTimeInput } from '@/components/PersianDateTimeInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useAuth } from '@/lib/auth-context';
 import { formatPersianDate, formatPersianDateTime } from '@/lib/date';
@@ -12,12 +13,6 @@ import { deadlinesApi, remindersApi } from '@/lib/services';
 import type { Deadline, Reminder } from '@/lib/types';
 
 type ReminderDetail = Reminder & { message?: string | null };
-
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 function reminderTitle(item: ReminderDetail): string {
   return item.message ?? item.title ?? 'Reminder';
@@ -163,13 +158,12 @@ export default function ReminderDetailPage() {
           </div>
           <div>
             <label className="label" htmlFor="edit-remindAt">Remind At</label>
-            <input
+            <PersianDateTimeInput
               id="edit-remindAt"
               name="remindAt"
-              type="datetime-local"
-              defaultValue={toDatetimeLocal(item.remindAt)}
+              defaultValue={item.remindAt}
+              persianDefault={item.remindAtPersian}
               required
-              className="w-full"
             />
           </div>
           <button type="submit" className="btn-primary">Save Changes</button>

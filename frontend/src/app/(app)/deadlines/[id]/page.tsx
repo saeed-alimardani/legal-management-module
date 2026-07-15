@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useAuth } from '@/lib/auth-context';
 import { formatPersianDate } from '@/lib/date';
@@ -198,13 +199,12 @@ export default function DeadlineDetailPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="label" htmlFor="edit-dueDate">Due Date</label>
-              <input
+              <PersianDateInput
                 id="edit-dueDate"
                 name="dueDate"
-                type="date"
-                defaultValue={item.dueDate.slice(0, 10)}
+                defaultValue={item.dueDate}
+                persianDefault={item.dueDatePersian}
                 required
-                className="w-full"
               />
             </div>
             <div>

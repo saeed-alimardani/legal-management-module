@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorModal } from '@/components/ErrorModal';
 import { ErrorState, LoadingState } from '@/components/States';
 import { FINANCIAL_TYPES } from '@/lib/enums';
@@ -111,7 +112,7 @@ function NewFinancialRecordPageContent() {
             </div>
             <div>
               <label className="label" htmlFor="recordDate">Record Date</label>
-              <input id="recordDate" name="recordDate" type="date" required className="w-full" />
+              <PersianDateInput id="recordDate" name="recordDate" required />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { formatPersianDate } from '@/lib/date';
 import { FINANCIAL_TYPES } from '@/lib/enums';
 import type { ParentType } from '@/lib/lookups';
@@ -146,13 +147,12 @@ export function MatterFinancialRecordsSection({
         </div>
         <div>
           <label className="label" htmlFor={`${formId}-recordDate`}>Record Date</label>
-          <input
+          <PersianDateInput
             id={`${formId}-recordDate`}
             name="recordDate"
-            type="date"
-            defaultValue={record?.recordDate?.slice(0, 10) ?? ''}
+            defaultValue={record?.recordDate}
+            persianDefault={record?.recordDatePersian}
             required
-            className="w-full"
           />
         </div>
         <div>

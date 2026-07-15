@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { NOTICE_STATUSES } from '@/lib/enums';
 import { casesApi, contractsApi, noticesApi } from '@/lib/services';
@@ -71,11 +72,11 @@ export default function NewNoticePage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="receivedDate">Received Date</label>
-            <input id="receivedDate" name="receivedDate" type="date" required className="w-full" />
+            <PersianDateInput id="receivedDate" name="receivedDate" required />
           </div>
           <div>
             <label className="label" htmlFor="responseDeadline">Response Deadline</label>
-            <input id="responseDeadline" name="responseDeadline" type="date" required className="w-full" />
+            <PersianDateInput id="responseDeadline" name="responseDeadline" required />
           </div>
         </div>
         <div>

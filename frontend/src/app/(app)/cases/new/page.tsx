@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState } from '@/components/States';
 import { CASE_STATUSES, CASE_TYPES, PRIORITIES } from '@/lib/enums';
 import { casesApi } from '@/lib/services';
@@ -71,11 +72,11 @@ export default function NewCasePage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="openedDate">Opened Date</label>
-            <input id="openedDate" name="openedDate" type="date" className="w-full" />
+            <PersianDateInput id="openedDate" name="openedDate" />
           </div>
           <div>
             <label className="label" htmlFor="closedDate">Closed Date</label>
-            <input id="closedDate" name="closedDate" type="date" className="w-full" />
+            <PersianDateInput id="closedDate" name="closedDate" />
           </div>
         </div>
         <div className="flex gap-3">

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorModal } from '@/components/ErrorModal';
 import { MatterDiscussionsSection } from '@/components/MatterDiscussionsSection';
 import { MatterDocumentsSection } from '@/components/MatterDocumentsSection';
@@ -184,29 +185,65 @@ export default function NoticeDetailPage() {
       {editing && (
         <form className="card space-y-4" onSubmit={handleUpdate}>
           <h3 className="font-semibold">Edit Notice</h3>
-          <input name="title" defaultValue={item.title} required className="w-full" />
-          <input name="sender" defaultValue={item.sender} required className="w-full" />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <input name="receivedDate" type="date" defaultValue={item.receivedDate?.slice(0, 10) ?? ''} required className="w-full" />
-            <input name="responseDeadline" type="date" defaultValue={item.responseDeadline?.slice(0, 10) ?? ''} required className="w-full" />
+          <div>
+            <label className="label" htmlFor="edit-notice-title">Title</label>
+            <input id="edit-notice-title" name="title" defaultValue={item.title} required className="w-full" />
           </div>
-          <select name="status" defaultValue={item.status} className="w-full">
-            {NOTICE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <textarea name="description" defaultValue={item.description ?? ''} rows={3} className="w-full" />
+          <div>
+            <label className="label" htmlFor="edit-notice-sender">Sender</label>
+            <input id="edit-notice-sender" name="sender" defaultValue={item.sender} required className="w-full" />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <select name="relatedCaseId" defaultValue={item.relatedCaseId ?? ''} className="w-full">
-              <option value="">None</option>
-              {cases.map((c) => (
-                <option key={c.id} value={c.id}>{c.referenceCode} — {c.title}</option>
-              ))}
+            <div>
+              <label className="label" htmlFor="edit-notice-receivedDate">Received Date</label>
+              <PersianDateInput
+                id="edit-notice-receivedDate"
+                name="receivedDate"
+                defaultValue={item.receivedDate}
+                persianDefault={item.receivedDatePersian}
+                required
+              />
+            </div>
+            <div>
+              <label className="label" htmlFor="edit-notice-responseDeadline">Response Deadline</label>
+              <PersianDateInput
+                id="edit-notice-responseDeadline"
+                name="responseDeadline"
+                defaultValue={item.responseDeadline}
+                persianDefault={item.responseDeadlinePersian}
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="edit-notice-status">Status</label>
+            <select id="edit-notice-status" name="status" defaultValue={item.status} className="w-full">
+              {NOTICE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select name="relatedContractId" defaultValue={item.relatedContractId ?? ''} className="w-full">
-              <option value="">None</option>
-              {contracts.map((c) => (
-                <option key={c.id} value={c.id}>{c.referenceCode} — {c.title}</option>
-              ))}
-            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="edit-notice-description">Description</label>
+            <textarea id="edit-notice-description" name="description" defaultValue={item.description ?? ''} rows={3} className="w-full" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="edit-notice-relatedCaseId">Related Case</label>
+              <select id="edit-notice-relatedCaseId" name="relatedCaseId" defaultValue={item.relatedCaseId ?? ''} className="w-full">
+                <option value="">None</option>
+                {cases.map((c) => (
+                  <option key={c.id} value={c.id}>{c.referenceCode} — {c.title}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="edit-notice-relatedContractId">Related Contract</label>
+              <select id="edit-notice-relatedContractId" name="relatedContractId" defaultValue={item.relatedContractId ?? ''} className="w-full">
+                <option value="">None</option>
+                {contracts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.referenceCode} — {c.title}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <button type="submit" className="btn-primary">Save Changes</button>
         </form>

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateTimeInput } from '@/components/PersianDateTimeInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { formatPersianDate } from '@/lib/date';
 import { deadlinesApi, remindersApi } from '@/lib/services';
@@ -57,7 +58,7 @@ export default function NewReminderPage() {
         </div>
         <div>
           <label className="label" htmlFor="remindAt">Remind At</label>
-          <input id="remindAt" name="remindAt" type="datetime-local" required className="w-full" />
+          <PersianDateTimeInput id="remindAt" name="remindAt" required />
         </div>
         <div>
           <label className="label" htmlFor="deadlineId">Deadline</label>

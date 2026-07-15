@@ -8,6 +8,7 @@ import { MatterDiscussionsSection } from '@/components/MatterDiscussionsSection'
 import { MatterDocumentsSection } from '@/components/MatterDocumentsSection';
 import { MatterFinancialRecordsSection } from '@/components/MatterFinancialRecordsSection';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { Pagination } from '@/components/Pagination';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useAuth } from '@/lib/auth-context';
@@ -234,11 +235,21 @@ export default function CaseDetailPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label" htmlFor="edit-case-openedDate">Opened Date</label>
-              <input id="edit-case-openedDate" name="openedDate" type="date" defaultValue={item.openedDate?.slice(0, 10) ?? ''} className="w-full" />
+              <PersianDateInput
+                id="edit-case-openedDate"
+                name="openedDate"
+                defaultValue={item.openedDate}
+                persianDefault={item.openedDatePersian}
+              />
             </div>
             <div>
               <label className="label" htmlFor="edit-case-closedDate">Closed Date</label>
-              <input id="edit-case-closedDate" name="closedDate" type="date" defaultValue={item.closedDate?.slice(0, 10) ?? ''} className="w-full" />
+              <PersianDateInput
+                id="edit-case-closedDate"
+                name="closedDate"
+                defaultValue={item.closedDate}
+                persianDefault={item.closedDatePersian}
+              />
             </div>
           </div>
           <button type="submit" className="btn-primary">Save Changes</button>

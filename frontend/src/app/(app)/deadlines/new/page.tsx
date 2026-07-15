@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { loadUserDirectory } from '@/lib/lookups';
 import {
@@ -89,7 +90,7 @@ export default function NewDeadlinePage() {
         </div>
         <div>
           <label className="label" htmlFor="dueDate">Due Date</label>
-          <input id="dueDate" name="dueDate" type="date" required className="w-full" />
+          <PersianDateInput id="dueDate" name="dueDate" required />
         </div>
         <div>
           <label className="label" htmlFor="assigneeId">Assignee</label>

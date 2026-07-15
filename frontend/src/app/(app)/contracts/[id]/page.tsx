@@ -8,6 +8,7 @@ import { MatterDiscussionsSection } from '@/components/MatterDiscussionsSection'
 import { MatterDocumentsSection } from '@/components/MatterDocumentsSection';
 import { MatterFinancialRecordsSection } from '@/components/MatterFinancialRecordsSection';
 import { PageHeader } from '@/components/PageHeader';
+import { PersianDateInput } from '@/components/PersianDateInput';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useAuth } from '@/lib/auth-context';
 import { formatPersianDate } from '@/lib/date';
@@ -179,15 +180,30 @@ export default function ContractDetailPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="label" htmlFor="edit-contract-effectiveDate">Effective Date</label>
-              <input id="edit-contract-effectiveDate" name="effectiveDate" type="date" defaultValue={item.effectiveDate?.slice(0, 10) ?? ''} className="w-full" />
+              <PersianDateInput
+                id="edit-contract-effectiveDate"
+                name="effectiveDate"
+                defaultValue={item.effectiveDate}
+                persianDefault={item.effectiveDatePersian}
+              />
             </div>
             <div>
               <label className="label" htmlFor="edit-contract-expirationDate">Expiration Date</label>
-              <input id="edit-contract-expirationDate" name="expirationDate" type="date" defaultValue={item.expirationDate?.slice(0, 10) ?? ''} className="w-full" />
+              <PersianDateInput
+                id="edit-contract-expirationDate"
+                name="expirationDate"
+                defaultValue={item.expirationDate}
+                persianDefault={item.expirationDatePersian}
+              />
             </div>
             <div>
               <label className="label" htmlFor="edit-contract-renewalDate">Renewal Date</label>
-              <input id="edit-contract-renewalDate" name="renewalDate" type="date" defaultValue={item.renewalDate?.slice(0, 10) ?? ''} className="w-full" />
+              <PersianDateInput
+                id="edit-contract-renewalDate"
+                name="renewalDate"
+                defaultValue={item.renewalDate}
+                persianDefault={item.renewalDatePersian}
+              />
             </div>
           </div>
           <button type="submit" className="btn-primary">Save Changes</button>

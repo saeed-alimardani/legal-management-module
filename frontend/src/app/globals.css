@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+@import 'react-multi-date-picker/styles/layouts/mobile.css';
+@import 'react-multi-date-picker/styles/colors/teal.css';
+
 :root {
   color-scheme: light;
 }
@@ -102,4 +105,31 @@ button:disabled {
 
 .modal-panel {
   @apply w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg;
+}
+
+.rmdp-container {
+  width: 100%;
+}
+
+.rmdp-input {
+  @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+}
+
+.rmdp-calendar .rmdp-day.rmdp-selected span:not(.highlight) {
+  background-color: #364fc7;
+  box-shadow: 0 0 3px #364fc7;
+}
+
+.rmdp-calendar .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: #dbe4ff;
+  color: #2f44a8;
+}
+
+.rmdp-arrow-container:hover {
+  background-color: #364fc7;
+  box-shadow: 0 0 3px #364fc7;
+}
+
+.rmdp-time-picker .rmdp-arrow-container:hover {
+  background-color: #364fc7;
 }
