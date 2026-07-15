@@ -143,11 +143,22 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Project-specific
-uploads/
-dist/
+uploads/*
+!uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/dist/
+frontend/.next/
 .env
 !.env.example
 
-# IDE / editor (local only — do not publish)
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
 .idea/
 .cursor/
+.vscode/
+
+# Local-only documents (assignment briefs, etc.)
+*.pdf

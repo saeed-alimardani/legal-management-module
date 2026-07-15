@@ -168,7 +168,7 @@ These decisions were mine, not delegated to AI:
 
 | Decision | My Reasoning |
 |----------|-------------|
-| **API-first, no frontend** | Backend architecture and API design are the focus of this repo |
+| **Full-stack monorepo** | NestJS API plus Next.js UI — backend DDD/hexagonal architecture remains the core design focus |
 | **NestJS + Prisma** | Typed, testable stack with first-class migrations |
 | **Concrete repos, one port** | Pragmatic hexagonal — ports only where the external system varies (filesystem) |
 | **Soft delete everywhere** | Legal data should not be hard-deleted from a user-facing API |
